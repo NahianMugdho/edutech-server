@@ -11,10 +11,10 @@ app.use(cors())
 app.use(express.json()); // This enables JSON parsing
 
 
-const { MongoClient, ServerApiVersion, ObjectId  } = require('mongodb');
-const uri = ``;
-// Replace with your actual MongoDB connection string
-// Example: const uri = "mongodb+srv://<username>:<password>@cluster.mongodb.net/myFirstDatabase?retryWrites=true&w=majority";
+
+const { MongoClient, ServerApiVersion } = require('mongodb');
+const uri = `mongodb+srv://${process.env.DB_user}:${process.env.DB_pass}@cluster0.qvjt0ww.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+
 
 
 
@@ -27,87 +27,88 @@ const client = new MongoClient(uri, {
   }
 });
 
+// ✅ JWT Verify Middleware
+const verifyToken = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) return res.status(401).send({ error: 'No token provided' });
+
+  const token = authHeader.split(' ')[1]; // "Bearer token"
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) return res.status(401).send({ error: 'Unauthorized' });
+    req.user = decoded;
+    next();
+  });
+};
+
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    // await client.connect();
+    await client.connect();
     // Send a ping to confirm a successful connection
-    // await client.db("admin").command({ ping: 1 });
+    await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
 
-//products
-//const colllection = client.db('product').collection('server'); // Collection for product queries
+    //products
 
 
-// ============================
-// ✅ PRODUCT ROUTES
-// ============================
 
-// @route   GET /product
-// @desc    Get all product queries
-// @access  Public
-app.get('/product', async (req, res) => {
-  // Fetch all products from MongoDB
+const userCollection = client.db('Edutech').collection('users');
+   // ✅ Create JWT token route
+    app.post('/jwt', (req, res) => {
+      const user = req.body;
+      const payload = {
+        email: user.email,
+        role: user.role || 'student'
+      };
+      const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
+      res.send({ token });
+    });
+
+
+
+
+//user
+app.get('/users', async (req, res) => {
+  try {
+    const users = await userCollection.find().toArray();
+    res.send(users);
+  } catch (error) {
+    res.status(500).send({ message: 'Error fetching users' });
+  }
 });
 
 
-// @route   POST /product
-// @desc    Add a new product query
-// @access  Public
-app.post('/product', async (req, res) => {
-  // Get data from req.body
-  // Insert into productCollection
+app.post('/users', async (req, res) => {
+  const { name, email } = req.body;
+  const existingUser = await userCollection.findOne({ email });
+
+  if (existingUser) {
+    return res.send({ message: 'User already exists', insertedId: null });
+  }
+
+  const result = await userCollection.insertOne({
+    name,
+    email,
+    role: 'student' // ✅ Everyone starts as student/general
+  });
+
+  res.send(result);
 });
 
 
-// @route   GET /product/:id
-// @desc    Get a single product query by ID
-// @access  Public
-app.get('/product/:id', async (req, res) => {
-  // Extract ID from req.params
-  // Fetch from productCollection by _id
+
+
+
+// Check if user is admin
+app.get('/users/admin/:email', async (req, res) => {
+  const email = req.params.email;
+  const user = await userCollection.findOne({ email: email });
+  const isAdmin = user?.role === 'admin';
+  res.send({ admin: isAdmin });
 });
 
-
-// @route   DELETE /product/:id
-// @desc    Delete a product query by ID
-// @access  Public/Admin
-app.delete('/product/:id', async (req, res) => {
-  // Extract ID from req.params
-  // Delete from productCollection
-});
-
-
-// ============================
-// ⭐ RECOMMENDATION ROUTES
-// ============================
-
-// @route   GET /recommendation
-// @desc    Get all recommendations OR filter by user email (?email=user@example.com)
-// @access  Public
-app.get('/recommendation', async (req, res) => {
-  // Optional: filter by userEmail using req.query.email
-  // Fetch from recommendationCollection
-});
-
-
-// @route   GET /recommendation/query/:queryId
-// @desc    Get recommendations for a specific product query
-// @access  Public
-app.get('/recommendation/query/:queryId', async (req, res) => {
-  // Extract queryId from req.params
-  // Fetch related recommendations from recommendationCollection
-});
-
-
-// @route   POST /recommendation
-// @desc    Add a new recommendation to a product query
-// @access  Public
-app.post('/recommendation', async (req, res) => {
-  // Get data from req.body
-  // Insert into recommendationCollection
-  // Optional: increment recommendationCount in productCollection
-});
 
 
 
@@ -118,14 +119,6 @@ app.post('/recommendation', async (req, res) => {
 }
 run().catch(console.dir);
 
-
-
-
-
-
-
-
-
 app.get('/', (req, res) => {
     res.send('Hello World!')
   })
@@ -133,3 +126,11 @@ app.get('/', (req, res) => {
   app.listen(port, () => {
     console.log(`Example app listening on port ${port}`)
   })
+
+
+
+
+
+
+
+
