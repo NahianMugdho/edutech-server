@@ -1,8 +1,8 @@
 require('dotenv').config()
 
 
-// const jwt = require('jsonwebtoken');
-// const { ObjectId } = require('mongodb'); // For _id usage in PATCH
+const jwt = require('jsonwebtoken');
+const { ObjectId } = require('mongodb'); // For _id usage in PATCH
 
 
 const express = require('express');
@@ -116,33 +116,33 @@ app.get('/users/admin/:email', async (req, res) => {
   res.send({ admin: isAdmin });
 });
 
+//kaium
+// ✅ GET: Check if user is a teacher
+app.get('/users/teacher/:email', async (req, res) => {
+  const email = req.params.email;
+  const user = await userCollection.findOne({ email });
+  const isTeacher = user?.role === 'teacher';
+  res.send({ teacher: isTeacher });
+});
 
-// // ✅ GET: Check if user is a teacher
-// app.get('/users/teacher/:email', async (req, res) => {
-//   const email = req.params.email;
-//   const user = await userCollection.findOne({ email });
-//   const isTeacher = user?.role === 'teacher';
-//   res.send({ teacher: isTeacher });
-// });
 
+// ✅ PATCH: Update user role (e.g. from student to admin/teacher)
+app.patch('/users/role/:id', async (req, res) => {
+  const id = req.params.id;
+  const { role } = req.body;
 
-// // ✅ PATCH: Update user role (e.g. from student to admin/teacher)
-// app.patch('/users/role/:id', async (req, res) => {
-//   const id = req.params.id;
-//   const { role } = req.body;
+  if (!['admin', 'teacher', 'student'].includes(role)) {
+    return res.status(400).send({ error: 'Invalid role' });
+  }
 
-//   if (!['admin', 'teacher', 'student'].includes(role)) {
-//     return res.status(400).send({ error: 'Invalid role' });
-//   }
+  const result = await userCollection.updateOne(
+    { _id: new ObjectId(id) },
+    { $set: { role: role } }
+  );
 
-//   const result = await userCollection.updateOne(
-//     { _id: new ObjectId(id) },
-//     { $set: { role: role } }
-//   );
-
-//   res.send(result);
-// });
-
+  res.send(result);
+});
+//kaium
 
 //for updateProfilePicture.jsx from FE
 app.patch('/users/:email', async (req, res) => {
