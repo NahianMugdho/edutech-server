@@ -1,6 +1,10 @@
 require('dotenv').config()
 
 
+const jwt = require('jsonwebtoken');
+const { ObjectId } = require('mongodb'); // For _id usage in PATCH
+
+
 const express = require('express');
 const app = express();
 const cors = require('cors');
@@ -103,12 +107,40 @@ app.post('/users', async (req, res) => {
 
 
 
+
 // Check if user is admin
 app.get('/users/admin/:email', async (req, res) => {
   const email = req.params.email;
   const user = await userCollection.findOne({ email: email });
   const isAdmin = user?.role === 'admin';
   res.send({ admin: isAdmin });
+});
+
+
+// ✅ GET: Check if user is a teacher
+app.get('/users/teacher/:email', async (req, res) => {
+  const email = req.params.email;
+  const user = await userCollection.findOne({ email });
+  const isTeacher = user?.role === 'teacher';
+  res.send({ teacher: isTeacher });
+});
+
+
+// ✅ PATCH: Update user role (e.g. from student to admin/teacher)
+app.patch('/users/role/:id', async (req, res) => {
+  const id = req.params.id;
+  const { role } = req.body;
+
+  if (!['admin', 'teacher', 'student'].includes(role)) {
+    return res.status(400).send({ error: 'Invalid role' });
+  }
+
+  const result = await userCollection.updateOne(
+    { _id: new ObjectId(id) },
+    { $set: { role: role } }
+  );
+
+  res.send(result);
 });
 
 
@@ -145,6 +177,7 @@ app.get('/', (req, res) => {
 
 
 
-
+console.log("DB User:", process.env.DB_user);
+console.log("JWT Secret:", process.env.JWT_SECRET);
 
 
