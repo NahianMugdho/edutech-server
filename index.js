@@ -116,7 +116,7 @@ app.get('/users/admin/:email', async (req, res) => {
   res.send({ admin: isAdmin });
 });
 
-
+//kaium
 // ✅ GET: Check if user is a teacher
 app.get('/users/teacher/:email', async (req, res) => {
   const email = req.params.email;
@@ -142,7 +142,7 @@ app.patch('/users/role/:id', async (req, res) => {
 
   res.send(result);
 });
-
+//kaium
 
 //for updateProfilePicture.jsx from FE
 app.patch('/users/:email', async (req, res) => {
