@@ -64,6 +64,7 @@ const userCollection = client.db('Edutech').collection('users');
       const user = req.body;
       const payload = {
         email: user.email,
+        
         role: user.role || 'student'
       };
       const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
@@ -85,7 +86,7 @@ app.get('/users', async (req, res) => {
 
 
 app.post('/users', async (req, res) => {
-  const { name, email } = req.body;
+  const { name, email,photo } = req.body;
   const existingUser = await userCollection.findOne({ email });
 
   if (existingUser) {
@@ -95,6 +96,7 @@ app.post('/users', async (req, res) => {
   const result = await userCollection.insertOne({
     name,
     email,
+    photo,
     role: 'student' // ✅ Everyone starts as student/general
   });
 
@@ -142,6 +144,18 @@ app.patch('/users/role/:id', async (req, res) => {
 });
 
 
+//for updateProfilePicture.jsx from FE
+app.patch('/users/:email', async (req, res) => {
+  const email = req.params.email;
+  const { photo } = req.body;
+
+  const result = await userCollection.updateOne(
+    { email },
+    { $set: { photo } }
+  );
+
+  res.send(result);
+});
 
 
   } finally {
