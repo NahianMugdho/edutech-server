@@ -1,6 +1,15 @@
 require("dotenv").config();
 
+
 const express = require("express");
+
+
+const jwt = require('jsonwebtoken');
+const { ObjectId } = require('mongodb'); // For _id usage in PATCH
+
+
+const express = require('express');
+
 const app = express();
 const cors = require("cors");
 const port = process.env.PORT || 3000;
@@ -52,7 +61,12 @@ async function run() {
       const user = req.body;
       const payload = {
         email: user.email,
+
         role: user.role || "student",
+
+        
+        role: user.role || 'student'
+
       };
       const token = jwt.sign(payload, process.env.JWT_SECRET, {
         expiresIn: "1h",
@@ -78,11 +92,96 @@ async function run() {
         return res.send({ message: "User already exists", insertedId: null });
       }
 
+
       const result = await userCollection.insertOne({
         name,
         email,
         role: "student", // ✅ Everyone starts as student/general
       });
+
+//user
+app.get('/users', async (req, res) => {
+  try {
+    const users = await userCollection.find().toArray();
+    res.send(users);
+  } catch (error) {
+    res.status(500).send({ message: 'Error fetching users' });
+  }
+});
+
+
+app.post('/users', async (req, res) => {
+  const { name, email,photo } = req.body;
+  const existingUser = await userCollection.findOne({ email });
+
+  if (existingUser) {
+    return res.send({ message: 'User already exists', insertedId: null });
+  }
+
+  const result = await userCollection.insertOne({
+    name,
+    email,
+    photo,
+    role: 'student' // ✅ Everyone starts as student/general
+  });
+
+  res.send(result);
+});
+
+
+
+
+
+
+// Check if user is admin
+app.get('/users/admin/:email', async (req, res) => {
+  const email = req.params.email;
+  const user = await userCollection.findOne({ email: email });
+  const isAdmin = user?.role === 'admin';
+  res.send({ admin: isAdmin });
+});
+
+//kaium
+// ✅ GET: Check if user is a teacher
+app.get('/users/teacher/:email', async (req, res) => {
+  const email = req.params.email;
+  const user = await userCollection.findOne({ email });
+  const isTeacher = user?.role === 'teacher';
+  res.send({ teacher: isTeacher });
+});
+
+
+// ✅ PATCH: Update user role (e.g. from student to admin/teacher)
+app.patch('/users/role/:id', async (req, res) => {
+  const id = req.params.id;
+  const { role } = req.body;
+
+  if (!['admin', 'teacher', 'student'].includes(role)) {
+    return res.status(400).send({ error: 'Invalid role' });
+  }
+
+  const result = await userCollection.updateOne(
+    { _id: new ObjectId(id) },
+    { $set: { role: role } }
+  );
+
+  res.send(result);
+});
+//kaium
+
+//for updateProfilePicture.jsx from FE
+app.patch('/users/:email', async (req, res) => {
+  const email = req.params.email;
+  const { photo } = req.body;
+
+  const result = await userCollection.updateOne(
+    { email },
+    { $set: { photo } }
+  );
+
+  res.send(result);
+});
+
 
       res.send(result);
     });
@@ -101,9 +200,27 @@ async function run() {
 }
 run().catch(console.dir);
 
+
 app.get("/", (req, res) => {
   res.send("Hello World!");
 });
+
+app.get('/', (req, res) => {
+    res.send('Hello World!')
+  })
+  
+  app.listen(port, () => {
+    console.log(`Example app listening on port ${port}`)
+  })
+
+
+
+
+
+console.log("DB User:", process.env.DB_user);
+console.log("JWT Secret:", process.env.JWT_SECRET);
+
+
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
