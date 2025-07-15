@@ -116,6 +116,23 @@ app.get('/users/admin/:email', async (req, res) => {
   res.send({ admin: isAdmin });
 });
 
+const verifyAdmin = async (req, res, next) => {
+  const email = req.user?.email;
+
+  const user = await userCollection.findOne({ email: email });
+
+  if (user?.role !== 'admin') {
+    return res.status(403).send({ error: 'Forbidden: Admins only' });
+  }
+
+  next();
+};
+
+
+
+
+
+
 //kaium
 // ✅ GET: Check if user is a teacher
 app.get('/users/teacher/:email', async (req, res) => {
@@ -127,7 +144,7 @@ app.get('/users/teacher/:email', async (req, res) => {
 
 
 // ✅ PATCH: Update user role (e.g. from student to admin/teacher)
-app.patch('/users/role/:id', async (req, res) => {
+app.patch('/users/role/:id', verifyToken, verifyAdmin, async (req, res) => {
   const id = req.params.id;
   const { role } = req.body;
 
@@ -142,6 +159,15 @@ app.patch('/users/role/:id', async (req, res) => {
 
   res.send(result);
 });
+
+
+
+
+
+
+
+
+
 //kaium
 
 //for updateProfilePicture.jsx from FE
