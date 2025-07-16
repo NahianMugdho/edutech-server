@@ -222,7 +222,19 @@ app.get('/videos', async (req, res) => {
 });
 
 
+//kaium
+// ✅ DELETE: Remove a course from DB
+app.delete('/videos/:id', verifyToken, verifyAdmin, async (req, res) => {
+  const id = req.params.id;
+  try {
+    const result = await videoCollection.deleteOne({ _id: new ObjectId(id) });
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ error: 'Failed to delete course' });
+  }
+});
 
+//kaium
 
 
 
