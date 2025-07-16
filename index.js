@@ -184,6 +184,48 @@ app.patch('/users/:email', async (req, res) => {
 });
 
 
+// Inside your run() function in backend
+const videoCollection = client.db('Edutech').collection('videos');
+
+// ✅ Route: Add new course with videos (Admin only)
+app.post('/videos', verifyToken, verifyAdmin, async (req, res) => {
+  const course = req.body;
+  try {
+    const result = await videoCollection.insertOne(course);
+    res.send(result);
+  } catch (err) {
+    res.status(500).send({ error: 'Failed to insert course' });
+  }
+});
+
+// ✅ PATCH: Approve a course
+app.patch('/videos/approve/:id', verifyToken, verifyAdmin, async (req, res) => {
+  const id = req.params.id;
+  try {
+    const result = await videoCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { status: 'approved' } }
+    );
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ error: 'Failed to approve course' });
+  }
+});
+
+app.get('/videos', async (req, res) => {
+  try {
+    const videos = await videoCollection.find().toArray();
+    res.send(videos);
+  } catch (error) {
+    res.status(500).send({ message: 'Error fetching videos' });
+  }
+});
+
+
+
+
+
+
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
