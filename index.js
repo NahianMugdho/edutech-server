@@ -141,6 +141,23 @@ app.get('/users/admin/:email', async (req, res) => {
   res.send({ admin: isAdmin });
 });
 
+const verifyAdmin = async (req, res, next) => {
+  const email = req.user?.email;
+
+  const user = await userCollection.findOne({ email: email });
+
+  if (user?.role !== 'admin') {
+    return res.status(403).send({ error: 'Forbidden: Admins only' });
+  }
+
+  next();
+};
+
+
+
+
+
+
 //kaium
 // ✅ GET: Check if user is a teacher
 app.get('/users/teacher/:email', async (req, res) => {
@@ -152,7 +169,7 @@ app.get('/users/teacher/:email', async (req, res) => {
 
 
 // ✅ PATCH: Update user role (e.g. from student to admin/teacher)
-app.patch('/users/role/:id', async (req, res) => {
+app.patch('/users/role/:id', verifyToken, verifyAdmin, async (req, res) => {
   const id = req.params.id;
   const { role } = req.body;
 
@@ -167,6 +184,15 @@ app.patch('/users/role/:id', async (req, res) => {
 
   res.send(result);
 });
+
+
+
+
+
+
+
+
+
 //kaium
 
 //for updateProfilePicture.jsx from FE
@@ -183,16 +209,85 @@ app.patch('/users/:email', async (req, res) => {
 });
 
 
-      res.send(result);
-    });
+// Inside your run() function in backend
+const videoCollection = client.db('Edutech').collection('videos');
 
-    // Check if user is admin
-    app.get("/users/admin/:email", async (req, res) => {
-      const email = req.params.email;
-      const user = await userCollection.findOne({ email: email });
-      const isAdmin = user?.role === "admin";
-      res.send({ admin: isAdmin });
-    });
+// ✅ Route: Add new course with videos (Admin only)
+app.post('/videos', verifyToken, verifyAdmin, async (req, res) => {
+  const course = req.body;
+  try {
+    const result = await videoCollection.insertOne(course);
+    res.send(result);
+  } catch (err) {
+    res.status(500).send({ error: 'Failed to insert course' });
+  }
+});
+
+// ✅ PATCH: Approve a course
+app.patch('/videos/approve/:id', verifyToken, verifyAdmin, async (req, res) => {
+  const id = req.params.id;
+  try {
+    const result = await videoCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { status: 'approved' } }
+    );
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ error: 'Failed to approve course' });
+  }
+});
+
+app.get('/videos', async (req, res) => {
+  try {
+    const videos = await videoCollection.find().toArray();
+    res.send(videos);
+  } catch (error) {
+    res.status(500).send({ message: 'Error fetching videos' });
+  }
+});
+
+
+//kaium
+// ✅ DELETE: Remove a course from DB
+app.delete('/videos/:id', verifyToken, verifyAdmin, async (req, res) => {
+  const id = req.params.id;
+  try {
+    const result = await videoCollection.deleteOne({ _id: new ObjectId(id) });
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ error: 'Failed to delete course' });
+  }
+});
+
+// ✅ Get single course by ID (with validation)
+app.get('/videos/:id', async (req, res) => {
+  const { id } = req.params;
+
+  // Check if ID is a valid ObjectId
+  if (!ObjectId.isValid(id)) {
+    return res.status(400).json({ error: "Invalid course ID" });
+  }
+
+  try {
+    const course = await videoCollection.findOne({ _id: new ObjectId(id) });
+
+    if (!course) {
+      return res.status(404).json({ error: "Course not found" });
+    }
+
+    res.json(course);
+  } catch (error) {
+    console.error("Error fetching course by ID:", error);
+    res.status(500).json({ error: "Server error while fetching course" });
+  }
+});
+
+
+
+//kaium
+
+
+
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
