@@ -234,6 +234,14 @@ app.delete('/videos/:id', verifyToken, verifyAdmin, async (req, res) => {
   }
 });
 
+// GET a single course by ID
+app.get('/videos/:id', async (req, res) => {
+  const id = req.params.id;
+  const course = await coursesCollection.findOne({ _id: new ObjectId(id) });
+  res.send(course);
+});
+
+
 //kaium
 
 
