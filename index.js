@@ -257,6 +257,23 @@ app.get('/videos/:id', async (req, res) => {
   }
 });
 
+app.patch('/videos/:id', verifyToken, verifyAdmin, async (req, res) => {
+  const { id } = req.params;
+  const updatedData = req.body;
+
+  try {
+    const result = await videoCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updatedData }
+    );
+    res.send(result);
+  } catch (err) {
+    console.error("Error updating course:", err);
+    res.status(500).send({ error: "Failed to update course" });
+  }
+});
+
+
 
 
 //kaium
