@@ -273,6 +273,37 @@ app.patch('/videos/:id', verifyToken, verifyAdmin, async (req, res) => {
   }
 });
 
+// ✅ PATCH: Toggle featured status (max 6 featured allowed)
+app.patch('/videos/feature/:id', verifyToken, verifyAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { featured } = req.body;
+
+  try {
+    const targetCourse = await videoCollection.findOne({ _id: new ObjectId(id) });
+
+    if (!targetCourse) {
+      return res.status(404).send({ error: "Course not found" });
+    }
+
+    // ✅ If setting to true → limit max 6 featured courses
+    if (featured) {
+      const featuredCount = await videoCollection.countDocuments({ featured: true });
+      if (featuredCount >= 6) {
+        return res.status(400).send({ error: "You can only feature up to 6 courses" });
+      }
+    }
+
+    const result = await videoCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { featured } }
+    );
+
+    res.send(result);
+  } catch (err) {
+    console.error("Feature toggle error:", err);
+    res.status(500).send({ error: "Server error" });
+  }
+});
 
 
 
