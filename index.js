@@ -234,12 +234,29 @@ app.delete('/videos/:id', verifyToken, verifyAdmin, async (req, res) => {
   }
 });
 
-// GET a single course by ID
+// ✅ Get single course by ID (with validation)
 app.get('/videos/:id', async (req, res) => {
-  const id = req.params.id;
-  const course = await coursesCollection.findOne({ _id: new ObjectId(id) });
-  res.send(course);
+  const { id } = req.params;
+
+  // Check if ID is a valid ObjectId
+  if (!ObjectId.isValid(id)) {
+    return res.status(400).json({ error: "Invalid course ID" });
+  }
+
+  try {
+    const course = await videoCollection.findOne({ _id: new ObjectId(id) });
+
+    if (!course) {
+      return res.status(404).json({ error: "Course not found" });
+    }
+
+    res.json(course);
+  } catch (error) {
+    console.error("Error fetching course by ID:", error);
+    res.status(500).json({ error: "Server error while fetching course" });
+  }
 });
+
 
 
 //kaium
