@@ -309,6 +309,89 @@ app.patch('/videos/feature/:id', verifyToken, verifyAdmin, async (req, res) => {
 
 //kaium
 
+const enrollCollection = client.db('Edutech').collection('enrollRequests');
+// ✅ POST: Enroll in a course
+// POST: User Enrollment Request
+app.post('/enrollRequests', verifyToken, async (req, res) => {
+  const enrollment = req.body;
+
+  try {
+    // Check if user already requested this course
+    const existing = await enrollCollection.findOne({
+      userEmail: enrollment.userEmail,
+      courseId: enrollment.courseId
+    });
+
+    if (existing) {
+      return res.status(400).send({ error: 'Already requested this course' });
+    }
+
+    enrollment.status = 'pending'; // Initial status
+    enrollment.timestamp = new Date();
+
+    const result = await enrollCollection.insertOne(enrollment);
+    res.send(result);
+  } catch (err) {
+    console.error('Enroll error:', err);
+    res.status(500).send({ error: 'Failed to submit enrollment request' });
+  }
+});
+
+// GET: Fetch all enroll requests
+app.get('/enrollRequests', verifyToken, async (req, res) => {
+  try {
+    const requests = await enrollCollection.find().toArray();
+    res.send(requests);
+  } catch (err) {
+    console.error('Failed to get enrollment requests', err);
+    res.status(500).send({ error: 'Failed to get enrollment requests' });
+  }
+});
+// ✅ PATCH: Approve enrollment request
+app.patch('/enrollRequests/:id', verifyToken, verifyAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  try {
+    const result = await enrollCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { status: status || 'approved' } }
+    );
+    res.send(result);
+  } catch (err) {
+    console.error('Failed to update enrollment request', err);
+    res.status(500).send({ error: 'Failed to update enrollment request' });
+  }
+});
+app.delete('/enrollRequests/:id', verifyToken, verifyAdmin, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await enrollCollection.deleteOne({ _id: new ObjectId(id) });
+    res.send(result);
+  } catch (err) {
+    console.error("Failed to delete request", err);
+    res.status(500).send({ error: "Failed to delete request" });
+  }
+});
+// server/routes/enrollRoutes.js বা server.js
+app.get('/checkApproval', verifyToken, async (req, res) => {
+  const { userEmail, courseId } = req.query;
+
+  const result = await enrollCollection.findOne({
+    userEmail,
+    courseId,
+    status: 'approved',
+  });
+
+  if (result) {
+    res.send({ approved: true });
+  } else {
+    res.send({ approved: false });
+  }
+});
+
+
 
 
   } finally {
