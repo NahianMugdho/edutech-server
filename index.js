@@ -160,6 +160,17 @@ app.patch('/users/role/:id', verifyToken, verifyAdmin, async (req, res) => {
   res.send(result);
 });
 
+// ✅ DELETE: Remove a user (admin only)
+app.delete('/users/:id', verifyToken, verifyAdmin, async (req, res) => {
+  const id = req.params.id;
+  try {
+    const result = await userCollection.deleteOne({ _id: new ObjectId(id) });
+    res.send(result);
+  } catch (error) {
+    console.error("Failed to delete user:", error);
+    res.status(500).send({ error: "Failed to delete user" });
+  }
+});
 
 
 
