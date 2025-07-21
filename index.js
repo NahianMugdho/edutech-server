@@ -316,6 +316,68 @@ app.patch('/videos/feature/:id', verifyToken, verifyAdmin, async (req, res) => {
   }
 });
 
+const commentCollection = client.db('Edutech').collection('comments');
+const progressCollection = client.db('Edutech').collection('progress');
+
+// ✅ Add Comment
+app.post('/comments', verifyToken, async (req, res) => {
+  const comment = req.body;
+  comment.timestamp = new Date();
+  const result = await commentCollection.insertOne(comment);
+  res.send(result);
+});
+
+// ✅ Get Comments by Course
+app.get('/comments/:courseId', async (req, res) => {
+  const courseId = req.params.courseId;
+  const comments = await commentCollection.find({ courseId }).sort({ timestamp: -1 }).toArray();
+  res.send(comments);
+});
+
+// ✅ Update Comment
+app.patch('/comments/:id', verifyToken, async (req, res) => {
+  const { id } = req.params;
+  const { text } = req.body;
+  const result = await commentCollection.updateOne(
+    { _id: new ObjectId(id) },
+    { $set: { text, edited: true } }
+  );
+  res.send(result);
+});
+
+// ✅ Delete Comment
+app.delete('/comments/:id', verifyToken, async (req, res) => {
+  const { id } = req.params;
+  const result = await commentCollection.deleteOne({ _id: new ObjectId(id) });
+  res.send(result);
+});
+
+// ✅ Update Video Progress
+app.post('/progress', verifyToken, async (req, res) => {
+  const { courseId, userEmail, videoUrl } = req.body;
+
+  await progressCollection.updateOne(
+    { courseId, userEmail },
+    { $addToSet: { completedVideos: videoUrl } }, // no duplicates
+    { upsert: true }
+  );
+
+  res.send({ success: true });
+});
+
+// ✅ Get Progress
+app.get('/progress', verifyToken, async (req, res) => {
+  const { courseId, userEmail } = req.query;
+  const progress = await progressCollection.findOne({ courseId, userEmail });
+  res.send(progress || { completedVideos: [] });
+});
+
+
+
+
+
+
+
 
 
 //kaium
