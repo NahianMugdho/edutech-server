@@ -273,10 +273,32 @@ app.patch('/videos/:id', verifyToken, verifyAdmin, async (req, res) => {
   const updatedData = req.body;
 
   try {
+    // 1. Update course data
     const result = await videoCollection.updateOne(
       { _id: new ObjectId(id) },
       { $set: updatedData }
     );
+
+    // 2. Find enrolled users for this course (approved enrollments)
+    const enrolledUsers = await enrollCollection
+      .find({ courseId: id, status: 'approved' })
+      .toArray();
+
+    // 3. Create notifications for each enrolled user
+    const notifications = enrolledUsers.map(user => ({
+      recipientEmail: user.userEmail,
+      type: 'course_update',
+      title: 'Course Updated',
+      message: `The course "${updatedData.title || 'a course'}" has been updated.`,
+      read: false,
+      timestamp: new Date(),
+    }));
+
+    if (notifications.length > 0) {
+      await notificationCollection.insertMany(notifications);
+    }
+
+    // 4. Respond success
     res.send(result);
   } catch (err) {
     console.error("Error updating course:", err);
@@ -374,6 +396,62 @@ app.get('/progress', verifyToken, async (req, res) => {
 
 
 
+// notification
+const { ObjectId } = require('mongodb');
+const notificationCollection = client.db('Edutech').collection('notifications');
+
+// ✅ POST: Create a new notification
+app.post('/notifications', verifyToken, async (req, res) => {
+  try {
+    const notification = {
+      ...req.body,
+      read: false,
+      timestamp: new Date()
+    };
+    const result = await notificationCollection.insertOne(notification);
+    res.send(result);
+  } catch (err) {
+    console.error("Failed to create notification:", err);
+    res.status(500).send({ error: "Failed to create notification" });
+  }
+});
+
+// ✅ GET: Fetch notifications for a specific user (only by email)
+app.get('/notifications', verifyToken, async (req, res) => {
+  const { email } = req.query;
+  try {
+    if (!email) {
+      return res.status(400).send({ error: "Missing email in query" });
+    }
+
+    const notifications = await notificationCollection
+      .find({ recipientEmail: email })
+      .sort({ timestamp: -1 })
+      .toArray();
+
+    res.send(notifications);
+  } catch (err) {
+    console.error("Failed to fetch notifications:", err);
+    res.status(500).send({ error: "Failed to fetch notifications" });
+  }
+});
+
+// ✅ PATCH: Mark a notification as read
+app.patch('/notifications/:id', verifyToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await notificationCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { read: true } }
+    );
+    res.send(result);
+  } catch (err) {
+    console.error("Failed to mark notification as read:", err);
+    res.status(500).send({ error: "Failed to update notification" });
+  }
+});
+
+
 
 
 
@@ -420,22 +498,48 @@ app.get('/enrollRequests', verifyToken, async (req, res) => {
     res.status(500).send({ error: 'Failed to get enrollment requests' });
   }
 });
-// ✅ PATCH: Approve enrollment request
+// ✅ PATCH: Approve enrollment request and send notification
 app.patch('/enrollRequests/:id', verifyToken, verifyAdmin, async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
 
   try {
+    // 1. Update enrollment status
     const result = await enrollCollection.updateOne(
       { _id: new ObjectId(id) },
       { $set: { status: status || 'approved' } }
     );
+
+    if (result.modifiedCount === 0) {
+      return res.status(404).send({ error: "Enrollment request not found or not updated" });
+    }
+
+    // 2. If status is approved, send notification to the user
+    if ((status || 'approved') === 'approved') {
+      // Get the enrollment request details to know user email and course title
+      const enrollment = await enrollCollection.findOne({ _id: new ObjectId(id) });
+
+      if (enrollment) {
+        const notification = {
+          recipientEmail: enrollment.userEmail,
+          type: 'enrollment_approved',
+          title: 'Enrollment Approved',
+          message: `Your enrollment request for the course "${enrollment.courseTitle}" has been approved.`,
+          read: false,
+          timestamp: new Date(),
+        };
+        await notificationCollection.insertOne(notification);
+      }
+    }
+
+    // 3. Send success response
     res.send(result);
   } catch (err) {
-    console.error('Failed to update enrollment request', err);
+    console.error('Failed to update enrollment request or send notification', err);
     res.status(500).send({ error: 'Failed to update enrollment request' });
   }
 });
+
 app.delete('/enrollRequests/:id', verifyToken, verifyAdmin, async (req, res) => {
   const { id } = req.params;
 
