@@ -470,7 +470,7 @@ app.post('/enrollRequests', verifyToken, async (req, res) => {
     // Check if user already requested this course
     const existing = await enrollCollection.findOne({
       userEmail: enrollment.userEmail,
-      courseId: enrollment.courseId
+      courseId: enrollment.courseId,
     });
 
     if (existing) {
