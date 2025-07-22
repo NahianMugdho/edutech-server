@@ -458,12 +458,12 @@ async function run() {
     app.post("/enrollRequests", verifyToken, async (req, res) => {
       const enrollment = req.body;
 
-      try {
-        // Check if user already requested this course
-        const existing = await enrollCollection.findOne({
-          userEmail: enrollment.userEmail,
-          courseId: enrollment.courseId,
-        });
+  try {
+    // Check if user already requested this course
+    const existing = await enrollCollection.findOne({
+      userEmail: enrollment.userEmail,
+      courseId: enrollment.courseId,
+    });
 
         if (existing) {
           return res
