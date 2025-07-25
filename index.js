@@ -19,7 +19,12 @@ app.use(express.json()); // This enables JSON parsing
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_user}:${process.env.DB_pass}@cluster0.qvjt0ww.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
+const SSLCommerzPayment = require("sslcommerz-lts");
+const { v4: uuidv4 } = require("uuid");
 
+const store_id = process.env.STORE_ID;
+const store_passwd = process.env.STORE_PASSWORD;
+const is_live = false; // sandbox = false, live = true
 
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -452,6 +457,154 @@ app.patch('/notifications/:id', verifyToken, async (req, res) => {
 });
 
 
+// enrollments
+// Load from .env
+const store_id = process.env.STORE_ID;
+const store_passwd = process.env.STORE_PASSWORD;
+const is_live = false; // true for production
+
+// Required packages
+const SSLCommerzPayment = require("sslcommerz-lts");
+const { v4: uuidv4 } = require("uuid");
+
+// ✅ POST: Initiate SSLCommerz payment session
+app.post("/initiate-payment", verifyToken, async (req, res) => {
+  const { courseId, courseTitle, price, userEmail, phone } = req.body;
+
+  if (!courseId || !userEmail || !price) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  const transactionId = uuidv4();
+
+  const data = {
+    total_amount: price,
+    currency: "BDT",
+    tran_id: transactionId,
+    success_url: process.env.SSL_SUCCESS_URL,
+    fail_url: process.env.SSL_FAIL_URL,
+    cancel_url: process.env.SSL_CANCEL_URL,
+    ipn_url: process.env.SSL_IPN_URL,
+    product_name: courseTitle,
+    cus_name: userEmail,
+    cus_email: userEmail,
+    cus_add1: "N/A",
+    cus_phone: phone || "N/A",
+    shipping_method: "NO",
+    product_category: "Course",
+    product_profile: "general",
+  };
+
+  try {
+    const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live);
+    const apiResponse = await sslcz.init(data);
+
+    // Save a pending enrollment request
+    const enrollDoc = {
+      courseId,
+      courseTitle,
+      userEmail,
+      phone,
+      status: "pending",
+      method: "sslcommerz",
+      transactionId,
+      timestamp: new Date(),
+    };
+
+    await enrollCollection.insertOne(enrollDoc);
+
+    if (apiResponse?.GatewayPageURL) {
+      res.send({ url: apiResponse.GatewayPageURL });
+    } else {
+      res.status(400).json({ error: "Payment session failed" });
+    }
+  } catch (error) {
+    console.error("Payment initiation error:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ✅ GET: Payment Success Handler
+// ✅ POST: Payment Success Callback (for SSLCommerz)
+app.post("/payment-success", async (req, res) => {
+  const { tran_id, val_id, amount, status } = req.body;
+
+  try {
+    await enrollCollection.updateOne(
+      { transactionId: tran_id },
+      {
+        $set: {
+          status: "approved",
+          paymentStatus: "success",
+          val_id,
+        },
+      }
+    );
+
+    // Optionally: send user notification (if not yet added)
+    await sendNotification({
+      userEmail: req.body.cus_email,
+      title: "Enrollment Successful",
+      message: `Your payment for ${req.body.product_name} was successful.`,
+    });
+
+    // Redirect to frontend success page
+    res.redirect(`http://localhost:5173/payment-success?tran_id=${tran_id}`);
+  } catch (err) {
+    console.error("Success update error:", err);
+    res.redirect("http://localhost:5173/payment-fail");
+  }
+});
+
+
+// ✅ GET: Payment Failure Handler
+app.get("/payment-fail", async (req, res) => {
+  const { tran_id } = req.query;
+
+  try {
+    await enrollCollection.updateOne(
+      { transactionId: tran_id },
+      { $set: { status: "failed", paymentStatus: "failed" } }
+    );
+  } catch (err) {
+    console.error("Fail update error:", err);
+  }
+
+  res.redirect("http://localhost:5173/payment-fail");
+});
+
+// ✅ GET: Payment Cancel Handler
+app.get("/payment-cancel", async (req, res) => {
+  const { tran_id } = req.query;
+
+  try {
+    await enrollCollection.updateOne(
+      { transactionId: tran_id },
+      { $set: { status: "cancelled", paymentStatus: "cancelled" } }
+    );
+  } catch (err) {
+    console.error("Cancel update error:", err);
+  }
+
+  res.redirect("http://localhost:5173/payment-cancel");
+});
+
+// ✅ Optional: POST IPN handler for server-to-server confirmation
+app.post("/ipn-handler", async (req, res) => {
+  const { tran_id, status } = req.body;
+
+  try {
+    await enrollCollection.updateOne(
+      { transactionId: tran_id },
+      { $set: { paymentStatus: status || "ipn-notified" } }
+    );
+
+    res.status(200).send("IPN received");
+  } catch (err) {
+    console.error("IPN handler error:", err);
+    res.status(500).send("Error handling IPN");
+  }
+});
 
 
 
@@ -473,8 +626,12 @@ app.post('/enrollRequests', verifyToken, async (req, res) => {
       courseId: enrollment.courseId,
     });
 
-    if (existing) {
-      return res.status(400).send({ error: 'Already requested this course' });
+    if (existing?.status === 'approved') {
+      return res.status(400).send({ error: 'You are already enrolled in this course' });
+    }
+
+    if (existing?.status === 'pending') {
+      return res.status(400).send({ error: 'You already submitted an enrollment request for this course' });
     }
 
     enrollment.status = 'pending'; // Initial status
@@ -487,6 +644,7 @@ app.post('/enrollRequests', verifyToken, async (req, res) => {
     res.status(500).send({ error: 'Failed to submit enrollment request' });
   }
 });
+
 
 // GET: Fetch all enroll requests
 app.get('/enrollRequests', verifyToken, async (req, res) => {
