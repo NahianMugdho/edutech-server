@@ -552,7 +552,7 @@ app.post("/payment-success", async (req, res) => {
     res.redirect(`http://localhost:5173/payment-success?tran_id=${tran_id}`);
   } catch (err) {
     console.error("Success update error:", err);
-    res.redirect("http://localhost:5173/payment-fail");
+    res.redirect("http://localhost:5173/payment-failed");
   }
 });
 
@@ -570,7 +570,7 @@ app.get("/payment-fail", async (req, res) => {
     console.error("Fail update error:", err);
   }
 
-  res.redirect("http://localhost:5173/payment-fail");
+  res.redirect("http://localhost:5173/payment-failed");
 });
 
 // ✅ GET: Payment Cancel Handler
@@ -726,6 +726,13 @@ app.get('/checkApproval', verifyToken, async (req, res) => {
   }
 });
 
+
+// index.js or server.js
+app.use(express.static('dist'));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
 
 
 
