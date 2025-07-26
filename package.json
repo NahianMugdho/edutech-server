@@ -26,4 +26,10 @@
   },
   "homepage": "https://github.com/NahianMugdho/edutech-server#readme",
   "description": ""
+    "nodemon": "^3.1.10",
+    "sslcommerz": "^1.7.0",
+    "sslcommerz-lts": "^1.1.0",
+    "uuid": "^11.1.0",
+    "vercel": "^44.5.1"
+  }
 }
