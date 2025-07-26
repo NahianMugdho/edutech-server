@@ -14,7 +14,6 @@
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.17.0",
-<<<<<<< HEAD
     "mongoose": "^8.16.4",
     "nodemon": "^3.1.10"
   },
@@ -27,9 +26,4 @@
   },
   "homepage": "https://github.com/NahianMugdho/edutech-server#readme",
   "description": ""
-=======
-    "nodemon": "^3.1.10",
-    "vercel": "^44.5.1"
-  }
->>>>>>> 81de9b284a1430d7acf7b13f94654802936602a8
 }
