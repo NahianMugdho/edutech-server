@@ -48,12 +48,10 @@ const verifyToken = (req, res, next) => {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    console.log("Pinged your deployment. You successfully connected to MongoDB!");
 
     //products
 
@@ -72,15 +70,19 @@ async function run() {
       res.send({ token });
     });
 
-    //user
-    app.get("/users", async (req, res) => {
-      try {
-        const users = await userCollection.find().toArray();
-        res.send(users);
-      } catch (error) {
-        res.status(500).send({ message: "Error fetching users" });
-      }
-    });
+
+
+
+//user
+app.get('/users', async (req, res) => {
+ 
+  try {
+    const users = await userCollection.find().toArray();
+    res.send(users);
+  } catch (error) {
+    res.status(500).send({ message: 'Error fetching users' });
+  }
+});
 
     app.post("/users", async (req, res) => {
       const { name, email, photo } = req.body;
@@ -551,10 +553,10 @@ app.post("/payment-success", async (req, res) => {
     });
 
     // Redirect to frontend success page
-    res.redirect(`http://localhost:5173/payment-success?tran_id=${tran_id}`);
+    res.redirect(`http://borno-9e597.web.app/payment-success?tran_id=${tran_id}`);
   } catch (err) {
     console.error("Success update error:", err);
-    res.redirect("http://localhost:5173/payment-fail");
+    res.redirect("http://borno-9e597.web.app/payment-failed");
   }
 });
 
@@ -572,7 +574,7 @@ app.get("/payment-fail", async (req, res) => {
     console.error("Fail update error:", err);
   }
 
-  res.redirect("http://localhost:5173/payment-fail");
+  res.redirect("http://borno-9e597.web.app/payment-failed");
 });
 
 // ✅ GET: Payment Cancel Handler
@@ -588,7 +590,7 @@ app.get("/payment-cancel", async (req, res) => {
     console.error("Cancel update error:", err);
   }
 
-  res.redirect("http://localhost:5173/payment-cancel");
+  res.redirect("http://borno-9e597.web.app/payment-cancel");
 });
 
 // ✅ Optional: POST IPN handler for server-to-server confirmation
@@ -742,12 +744,23 @@ app.post("/ipn-handler", async (req, res) => {
         status: "approved",
       });
 
-      if (result) {
-        res.send({ approved: true });
-      } else {
-        res.send({ approved: false });
-      }
-    });
+  if (result) {
+    res.send({ approved: true });
+  } else {
+    res.send({ approved: false });
+  }
+});
+
+
+// index.js or server.js
+app.use(express.static('dist'));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
+
+
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
