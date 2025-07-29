@@ -728,12 +728,12 @@ app.get('/checkApproval', verifyToken, async (req, res) => {
 });
 
 
-// index.js or server.js
-app.use(express.static('dist'));
+// // index.js or server.js
+// app.use(express.static('dist'));
 
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-});
+// app.get('*', (req, res) => {
+//   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+// });
 
 
 
