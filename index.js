@@ -550,10 +550,10 @@ app.post("/payment-success", async (req, res) => {
     });
 
     // Redirect to frontend success page
-    res.redirect(`http://borno-9e597.web.app/payment-success?tran_id=${tran_id}`);
+    res.redirect(`https://bornobyte-bd.web.app/payment-success?tran_id=${tran_id}`);
   } catch (err) {
     console.error("Success update error:", err);
-    res.redirect("http://borno-9e597.web.app/payment-failed");
+    res.redirect("https://bornobyte-bd.web.app/payment-failed");
   }
 });
 
@@ -571,7 +571,7 @@ app.get("/payment-fail", async (req, res) => {
     console.error("Fail update error:", err);
   }
 
-  res.redirect("http://borno-9e597.web.app/payment-failed");
+  res.redirect("https://bornobyte-bd.web.app/payment-failed");
 });
 
 // ✅ GET: Payment Cancel Handler
@@ -587,7 +587,7 @@ app.get("/payment-cancel", async (req, res) => {
     console.error("Cancel update error:", err);
   }
 
-  res.redirect("http://borno-9e597.web.app/payment-cancel");
+  res.redirect("https://bornobyte-bd.web.app/payment-cancel");
 });
 
 // ✅ Optional: POST IPN handler for server-to-server confirmation
