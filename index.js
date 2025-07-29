@@ -553,10 +553,10 @@ app.post("/payment-success", async (req, res) => {
     });
 
     // Redirect to frontend success page
-    res.redirect(`http://borno-9e597.web.app/payment-success?tran_id=${tran_id}`);
+    res.redirect(`https://bornobyte-bd.web.app/payment-success?tran_id=${tran_id}`);
   } catch (err) {
     console.error("Success update error:", err);
-    res.redirect("http://borno-9e597.web.app/payment-failed");
+    res.redirect("https://bornobyte-bd.web.app/payment-failed");
   }
 });
 
@@ -574,7 +574,7 @@ app.get("/payment-fail", async (req, res) => {
     console.error("Fail update error:", err);
   }
 
-  res.redirect("http://borno-9e597.web.app/payment-failed");
+  res.redirect("https://bornobyte-bd.web.app/payment-failed");
 });
 
 // ✅ GET: Payment Cancel Handler
@@ -590,7 +590,7 @@ app.get("/payment-cancel", async (req, res) => {
     console.error("Cancel update error:", err);
   }
 
-  res.redirect("http://borno-9e597.web.app/payment-cancel");
+  res.redirect("https://bornobyte-bd.web.app/payment-cancel");
 });
 
 // ✅ Optional: POST IPN handler for server-to-server confirmation
@@ -751,13 +751,49 @@ app.post("/ipn-handler", async (req, res) => {
   }
 });
 
+//homepage COurses
+const courseCollection = client.db('Edutech').collection('courseCollection');
+// POST: Add course
+app.post('/courses', verifyToken, verifyAdmin, async (req, res) => {
+  const course = req.body;
+  course.createdAt = new Date();
+  const result = await courseCollection.insertOne(course);
+  res.send(result);
+});
+
+// GET: All Courses
+app.get('/courses', async (req, res) => {
+  const result = await courseCollection.find().toArray();
+  res.send(result);
+});
+
+// PATCH: Update course
+app.patch('/courses/:id', verifyToken, verifyAdmin, async (req, res) => {
+  const { id } = req.params;
+  const updatedData = req.body;
+  const result = await courseCollection.updateOne(
+    { _id: new ObjectId(id) },
+    { $set: updatedData }
+  );
+  res.send(result);
+});
+
+// DELETE: Delete course
+app.delete('/courses/:id', verifyToken, verifyAdmin, async (req, res) => {
+  const { id } = req.params;
+  const result = await courseCollection.deleteOne({ _id: new ObjectId(id) });
+  res.send(result);
+});
+
+
+
 
 // index.js or server.js
-app.use(express.static('dist'));
+// app.use(express.static('dist'));
 
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-});
+// app.get('*', (req, res) => {
+//   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+// });
 
 
 
