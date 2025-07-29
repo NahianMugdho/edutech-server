@@ -727,8 +727,44 @@ app.get('/checkApproval', verifyToken, async (req, res) => {
   }
 });
 
+//homepage COurses
+const courseCollection = client.db('Edutech').collection('courseCollection');
+// POST: Add course
+app.post('/courses', verifyToken, verifyAdmin, async (req, res) => {
+  const course = req.body;
+  course.createdAt = new Date();
+  const result = await courseCollection.insertOne(course);
+  res.send(result);
+});
 
-// // index.js or server.js
+// GET: All Courses
+app.get('/courses', async (req, res) => {
+  const result = await courseCollection.find().toArray();
+  res.send(result);
+});
+
+// PATCH: Update course
+app.patch('/courses/:id', verifyToken, verifyAdmin, async (req, res) => {
+  const { id } = req.params;
+  const updatedData = req.body;
+  const result = await courseCollection.updateOne(
+    { _id: new ObjectId(id) },
+    { $set: updatedData }
+  );
+  res.send(result);
+});
+
+// DELETE: Delete course
+app.delete('/courses/:id', verifyToken, verifyAdmin, async (req, res) => {
+  const { id } = req.params;
+  const result = await courseCollection.deleteOne({ _id: new ObjectId(id) });
+  res.send(result);
+});
+
+
+
+
+// index.js or server.js
 // app.use(express.static('dist'));
 
 // app.get('*', (req, res) => {
