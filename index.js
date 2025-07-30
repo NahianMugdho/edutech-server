@@ -730,7 +730,7 @@ app.get('/checkApproval', verifyToken, async (req, res) => {
 //homepage COurses
 const courseCollection = client.db('Edutech').collection('courseCollection');
 // POST: Add course
-app.post('/courses', verifyToken, verifyAdmin, async (req, res) => {
+app.post('/specializations', verifyToken, verifyAdmin, async (req, res) => {
   const course = req.body;
   course.createdAt = new Date();
   const result = await courseCollection.insertOne(course);
@@ -738,13 +738,13 @@ app.post('/courses', verifyToken, verifyAdmin, async (req, res) => {
 });
 
 // GET: All Courses
-app.get('/courses', async (req, res) => {
+app.get('/specializations', async (req, res) => {
   const result = await courseCollection.find().toArray();
   res.send(result);
 });
 
 // PATCH: Update course
-app.patch('/courses/:id', verifyToken, verifyAdmin, async (req, res) => {
+app.patch('/specializations/:id', verifyToken, verifyAdmin, async (req, res) => {
   const { id } = req.params;
   const updatedData = req.body;
   const result = await courseCollection.updateOne(
@@ -755,7 +755,7 @@ app.patch('/courses/:id', verifyToken, verifyAdmin, async (req, res) => {
 });
 
 // DELETE: Delete course
-app.delete('/courses/:id', verifyToken, verifyAdmin, async (req, res) => {
+app.delete('/specializations/:id', verifyToken, verifyAdmin, async (req, res) => {
   const { id } = req.params;
   const result = await courseCollection.deleteOne({ _id: new ObjectId(id) });
   res.send(result);
