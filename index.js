@@ -50,6 +50,18 @@ const verifyToken = (req, res, next) => {
   });
 };
 
+// Middleware to get a user by ID (used for superadmin protection)
+const getUserById = async (id, db) => {
+  try {
+    const objectId = new ObjectId(id);
+    const user = await db.collection("users").findOne({ _id: objectId });
+    return user;
+  } catch (error) {
+    return null;
+  }
+};
+
+
 
 async function run() {
   try {
@@ -158,6 +170,13 @@ app.patch('/users/role/:id', verifyToken, verifyAdmin, async (req, res) => {
     return res.status(400).send({ error: 'Invalid role' });
   }
 
+  const targetUser = await userCollection.findOne({ _id: new ObjectId(id) });
+
+  // ✅ Prevent modifying superadmin
+  if (targetUser?.superadmin) {
+    return res.status(403).send({ error: 'Forbidden: Cannot change role of a superadmin' });
+  }
+
   const result = await userCollection.updateOne(
     { _id: new ObjectId(id) },
     { $set: { role: role } }
@@ -169,7 +188,15 @@ app.patch('/users/role/:id', verifyToken, verifyAdmin, async (req, res) => {
 // ✅ DELETE: Remove a user (admin only)
 app.delete('/users/:id', verifyToken, verifyAdmin, async (req, res) => {
   const id = req.params.id;
+
   try {
+    const targetUser = await userCollection.findOne({ _id: new ObjectId(id) });
+
+    // ✅ Prevent deleting superadmin
+    if (targetUser?.superadmin) {
+      return res.status(403).send({ error: 'Forbidden: Cannot delete a superadmin' });
+    }
+
     const result = await userCollection.deleteOne({ _id: new ObjectId(id) });
     res.send(result);
   } catch (error) {
@@ -177,6 +204,7 @@ app.delete('/users/:id', verifyToken, verifyAdmin, async (req, res) => {
     res.status(500).send({ error: "Failed to delete user" });
   }
 });
+
 
 
 
