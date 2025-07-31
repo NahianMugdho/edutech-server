@@ -45,6 +45,22 @@ const verifyToken = (req, res, next) => {
   });
 };
 
+<<<<<<< HEAD
+=======
+// Middleware to get a user by ID (used for superadmin protection)
+const getUserById = async (id, db) => {
+  try {
+    const objectId = new ObjectId(id);
+    const user = await db.collection("users").findOne({ _id: objectId });
+    return user;
+  } catch (error) {
+    return null;
+  }
+};
+
+
+
+>>>>>>> f0e2b0f1eae9869a2fc2b7fecdc4fce889d4a53a
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -88,8 +104,265 @@ app.get('/users', async (req, res) => {
       const { name, email, photo } = req.body;
       const existingUser = await userCollection.findOne({ email });
 
+<<<<<<< HEAD
       if (existingUser) {
         return res.send({ message: "User already exists", insertedId: null });
+=======
+app.post('/users', async (req, res) => {
+  const { name, email,photo } = req.body;
+  const existingUser = await userCollection.findOne({ email });
+
+  if (existingUser) {
+    return res.send({ message: 'User already exists', insertedId: null });
+  }
+
+  const result = await userCollection.insertOne({
+    name,
+    email,
+    photo,
+    role: 'student' // ✅ Everyone starts as student/general
+  });
+
+  res.send(result);
+});
+
+
+
+
+
+
+// Check if user is admin
+app.get('/users/admin/:email', async (req, res) => {
+  const email = req.params.email;
+  const user = await userCollection.findOne({ email: email });
+  const isAdmin = user?.role === 'admin';
+  res.send({ admin: isAdmin });
+});
+
+const verifyAdmin = async (req, res, next) => {
+  const email = req.user?.email;
+
+  const user = await userCollection.findOne({ email: email });
+
+  if (user?.role !== 'admin') {
+    return res.status(403).send({ error: 'Forbidden: Admins only' });
+  }
+
+  next();
+};
+
+
+
+
+
+
+//kaium
+// ✅ GET: Check if user is a teacher
+app.get('/users/teacher/:email', async (req, res) => {
+  const email = req.params.email;
+  const user = await userCollection.findOne({ email });
+  const isTeacher = user?.role === 'teacher';
+  res.send({ teacher: isTeacher });
+});
+
+
+// ✅ PATCH: Update user role (e.g. from student to admin/teacher)
+app.patch('/users/role/:id', verifyToken, verifyAdmin, async (req, res) => {
+  const id = req.params.id;
+  const { role } = req.body;
+
+  if (!['admin', 'teacher', 'student'].includes(role)) {
+    return res.status(400).send({ error: 'Invalid role' });
+  }
+
+  const targetUser = await userCollection.findOne({ _id: new ObjectId(id) });
+
+  // ✅ Prevent modifying superadmin
+  if (targetUser?.superadmin) {
+    return res.status(403).send({ error: 'Forbidden: Cannot change role of a superadmin' });
+  }
+
+  const result = await userCollection.updateOne(
+    { _id: new ObjectId(id) },
+    { $set: { role: role } }
+  );
+
+  res.send(result);
+});
+
+// ✅ DELETE: Remove a user (admin only)
+app.delete('/users/:id', verifyToken, verifyAdmin, async (req, res) => {
+  const id = req.params.id;
+
+  try {
+    const targetUser = await userCollection.findOne({ _id: new ObjectId(id) });
+
+    // ✅ Prevent deleting superadmin
+    if (targetUser?.superadmin) {
+      return res.status(403).send({ error: 'Forbidden: Cannot delete a superadmin' });
+    }
+
+    const result = await userCollection.deleteOne({ _id: new ObjectId(id) });
+    res.send(result);
+  } catch (error) {
+    console.error("Failed to delete user:", error);
+    res.status(500).send({ error: "Failed to delete user" });
+  }
+});
+
+
+
+
+
+
+
+
+
+//kaium
+
+//for updateProfilePicture.jsx from FE
+app.patch('/users/:email', async (req, res) => {
+  const email = req.params.email;
+  const { photo } = req.body;
+
+  const result = await userCollection.updateOne(
+    { email },
+    { $set: { photo } }
+  );
+
+  res.send(result);
+});
+
+
+// Inside your run() function in backend
+const videoCollection = client.db('Edutech').collection('videos');
+
+// ✅ Route: Add new course with videos (Admin only)
+app.post('/videos', verifyToken, verifyAdmin, async (req, res) => {
+  const course = req.body;
+  try {
+    const result = await videoCollection.insertOne(course);
+    res.send(result);
+  } catch (err) {
+    res.status(500).send({ error: 'Failed to insert course' });
+  }
+});
+
+// ✅ PATCH: Approve a course
+app.patch('/videos/approve/:id', verifyToken, verifyAdmin, async (req, res) => {
+  const id = req.params.id;
+  try {
+    const result = await videoCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { status: 'approved' } }
+    );
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ error: 'Failed to approve course' });
+  }
+});
+
+app.get('/videos', async (req, res) => {
+  try {
+    const videos = await videoCollection.find().toArray();
+    res.send(videos);
+  } catch (error) {
+    res.status(500).send({ message: 'Error fetching videos' });
+  }
+});
+
+
+//kaium
+// ✅ DELETE: Remove a course from DB
+app.delete('/videos/:id', verifyToken, verifyAdmin, async (req, res) => {
+  const id = req.params.id;
+  try {
+    const result = await videoCollection.deleteOne({ _id: new ObjectId(id) });
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ error: 'Failed to delete course' });
+  }
+});
+
+// ✅ Get single course by ID (with validation)
+app.get('/videos/:id', async (req, res) => {
+  const { id } = req.params;
+
+  // Check if ID is a valid ObjectId
+  if (!ObjectId.isValid(id)) {
+    return res.status(400).json({ error: "Invalid course ID" });
+  }
+
+  try {
+    const course = await videoCollection.findOne({ _id: new ObjectId(id) });
+
+    if (!course) {
+      return res.status(404).json({ error: "Course not found" });
+    }
+
+    res.json(course);
+  } catch (error) {
+    console.error("Error fetching course by ID:", error);
+    res.status(500).json({ error: "Server error while fetching course" });
+  }
+});
+
+app.patch('/videos/:id', verifyToken, verifyAdmin, async (req, res) => {
+  const { id } = req.params;
+  const updatedData = req.body;
+
+  try {
+    // 1. Update course data
+    const result = await videoCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updatedData }
+    );
+
+    // 2. Find enrolled users for this course (approved enrollments)
+    const enrolledUsers = await enrollCollection
+      .find({ courseId: id, status: 'approved' })
+      .toArray();
+
+    // 3. Create notifications for each enrolled user
+    const notifications = enrolledUsers.map(user => ({
+      recipientEmail: user.userEmail,
+      type: 'course_update',
+      title: 'Course Updated',
+      message: `The course "${updatedData.title || 'a course'}" has been updated.`,
+      read: false,
+      timestamp: new Date(),
+    }));
+
+    if (notifications.length > 0) {
+      await notificationCollection.insertMany(notifications);
+    }
+
+    // 4. Respond success
+    res.send(result);
+  } catch (err) {
+    console.error("Error updating course:", err);
+    res.status(500).send({ error: "Failed to update course" });
+  }
+});
+
+// ✅ PATCH: Toggle featured status (max 6 featured allowed)
+app.patch('/videos/feature/:id', verifyToken, verifyAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { featured } = req.body;
+
+  try {
+    const targetCourse = await videoCollection.findOne({ _id: new ObjectId(id) });
+
+    if (!targetCourse) {
+      return res.status(404).send({ error: "Course not found" });
+    }
+
+    // ✅ If setting to true → limit max 6 featured courses
+    if (featured) {
+      const featuredCount = await videoCollection.countDocuments({ featured: true });
+      if (featuredCount >= 6) {
+        return res.status(400).send({ error: "You can only feature up to 6 courses" });
+>>>>>>> f0e2b0f1eae9869a2fc2b7fecdc4fce889d4a53a
       }
 
       const result = await userCollection.insertOne({
@@ -754,7 +1027,7 @@ app.post("/ipn-handler", async (req, res) => {
 //homepage COurses
 const courseCollection = client.db('Edutech').collection('courseCollection');
 // POST: Add course
-app.post('/courses', verifyToken, verifyAdmin, async (req, res) => {
+app.post('/specializations', verifyToken, verifyAdmin, async (req, res) => {
   const course = req.body;
   course.createdAt = new Date();
   const result = await courseCollection.insertOne(course);
@@ -762,13 +1035,13 @@ app.post('/courses', verifyToken, verifyAdmin, async (req, res) => {
 });
 
 // GET: All Courses
-app.get('/courses', async (req, res) => {
+app.get('/specializations', async (req, res) => {
   const result = await courseCollection.find().toArray();
   res.send(result);
 });
 
 // PATCH: Update course
-app.patch('/courses/:id', verifyToken, verifyAdmin, async (req, res) => {
+app.patch('/specializations/:id', verifyToken, verifyAdmin, async (req, res) => {
   const { id } = req.params;
   const updatedData = req.body;
   const result = await courseCollection.updateOne(
@@ -779,7 +1052,7 @@ app.patch('/courses/:id', verifyToken, verifyAdmin, async (req, res) => {
 });
 
 // DELETE: Delete course
-app.delete('/courses/:id', verifyToken, verifyAdmin, async (req, res) => {
+app.delete('/specializations/:id', verifyToken, verifyAdmin, async (req, res) => {
   const { id } = req.params;
   const result = await courseCollection.deleteOne({ _id: new ObjectId(id) });
   res.send(result);
