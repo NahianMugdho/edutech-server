@@ -152,6 +152,22 @@ const verifyAdmin = async (req, res, next) => {
 
 
 //kaium
+
+// Assuming you have MongoDB db connection and userCollection set up
+app.get('/users/role/:email', async (req, res) => {
+  try {
+    const email = req.params.email;
+    const user = await db.collection('users').findOne({ email: email });
+    if (!user) {
+      return res.status(404).send({ error: 'User not found' });
+    }
+    res.send({ role: user.role });
+  } catch (error) {
+    res.status(500).send({ error: 'Failed to fetch user role' });
+  }
+});
+
+
 // ✅ GET: Check if user is a teacher
 app.get('/users/teacher/:email', async (req, res) => {
   const email = req.params.email;
@@ -205,6 +221,141 @@ app.delete('/users/:id', verifyToken, verifyAdmin, async (req, res) => {
   }
 });
 
+
+const teacherCollection = client.db('Edutech').collection('teachers');
+// const userCollection = client.db('Edutech').collection('users');
+
+// ✅ Get all teacher profiles (public)
+app.get('/teachers', async (req, res) => {
+  try {
+    const teachers = await teacherCollection.find().toArray();
+    res.send(teachers);
+  } catch (error) {
+    res.status(500).send({ error: 'Failed to fetch teachers' });
+  }
+});
+
+// Add a new teacher profile (admin only)
+app.post('/teachers', async (req, res) => {
+  try {
+    const {
+      name,
+      subject,
+      description,
+      image,
+      designation,
+      education,
+      experience,
+      email,
+      linkedin,
+      courses,
+      courseLinks,
+      bio,
+      userEmail
+    } = req.body;
+
+    const user = await userCollection.findOne({ email: userEmail });
+    if (!user || user.role !== 'admin') {
+      return res.status(403).send({ error: 'Unauthorized access' });
+    }
+
+    const newTeacher = {
+      name,
+      subject,
+      description,
+      image,
+      designation,
+      education,
+      experience,
+      email,
+      linkedin,
+      courses,
+      courseLinks,
+      bio
+    };
+
+    const result = await teacherCollection.insertOne(newTeacher);
+    res.send(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ error: 'Failed to add teacher' });
+  }
+});
+
+// Update a teacher profile (admin only)
+app.put('/teachers/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      name,
+      subject,
+      description,
+      image,
+      designation,
+      education,
+      experience,
+      email,
+      linkedin,
+      courses,
+      courseLinks,
+      bio,
+      userEmail
+    } = req.body;
+
+    const user = await userCollection.findOne({ email: userEmail });
+    if (!user || user.role !== 'admin') {
+      return res.status(403).send({ error: 'Unauthorized access' });
+    }
+
+    const updatedTeacher = {
+      $set: {
+        name,
+        subject,
+        description,
+        image,
+        designation,
+        education,
+        experience,
+        email,
+        linkedin,
+        courses,
+        courseLinks,
+        bio
+      }
+    };
+
+    const result = await teacherCollection.updateOne(
+      { _id: new ObjectId(id) },
+      updatedTeacher
+    );
+
+    res.send(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ error: 'Failed to update teacher profile' });
+  }
+});
+
+
+// ✅ Delete a teacher profile (admin only)
+app.delete('/teachers/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userEmail } = req.body;
+
+    // ✅ Check if the user is an admin
+    const user = await userCollection.findOne({ email: userEmail });
+    if (!user || user.role !== 'admin') {
+      return res.status(403).send({ error: 'Unauthorized access' });
+    }
+
+    const result = await teacherCollection.deleteOne({ _id: new ObjectId(id) });
+    res.send(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ error: 'Failed to delete teacher profile' });
+  }
+});
 
 
 
