@@ -629,12 +629,10 @@ async function run() {
         }
 
         if (existing?.status === "pending") {
-          return res
-            .status(400)
-            .send({
-              error:
-                "You already submitted an enrollment request for this course",
-            });
+          return res.status(400).send({
+            error:
+              "You already submitted an enrollment request for this course",
+          });
         }
 
         enrollment.status = "pending"; // Initial status
