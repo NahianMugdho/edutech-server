@@ -21,7 +21,6 @@ const store_id = process.env.STORE_ID;
 const store_passwd = process.env.STORE_PASSWORD;
 const is_live = false; // sandbox = false, live = true
 
-
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
@@ -45,29 +44,15 @@ const verifyToken = (req, res, next) => {
   });
 };
 
-<<<<<<< HEAD
-=======
-// Middleware to get a user by ID (used for superadmin protection)
-const getUserById = async (id, db) => {
-  try {
-    const objectId = new ObjectId(id);
-    const user = await db.collection("users").findOne({ _id: objectId });
-    return user;
-  } catch (error) {
-    return null;
-  }
-};
-
-
-
->>>>>>> f0e2b0f1eae9869a2fc2b7fecdc4fce889d4a53a
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    console.log(
+      "Pinged your deployment. You successfully connected to MongoDB!"
+    );
 
     //products
 
@@ -86,283 +71,22 @@ async function run() {
       res.send({ token });
     });
 
-
-
-
-//user
-app.get('/users', async (req, res) => {
- 
-  try {
-    const users = await userCollection.find().toArray();
-    res.send(users);
-  } catch (error) {
-    res.status(500).send({ message: 'Error fetching users' });
-  }
-});
+    //user
+    app.get("/users", async (req, res) => {
+      try {
+        const users = await userCollection.find().toArray();
+        res.send(users);
+      } catch (error) {
+        res.status(500).send({ message: "Error fetching users" });
+      }
+    });
 
     app.post("/users", async (req, res) => {
       const { name, email, photo } = req.body;
       const existingUser = await userCollection.findOne({ email });
 
-<<<<<<< HEAD
       if (existingUser) {
         return res.send({ message: "User already exists", insertedId: null });
-=======
-app.post('/users', async (req, res) => {
-  const { name, email,photo } = req.body;
-  const existingUser = await userCollection.findOne({ email });
-
-  if (existingUser) {
-    return res.send({ message: 'User already exists', insertedId: null });
-  }
-
-  const result = await userCollection.insertOne({
-    name,
-    email,
-    photo,
-    role: 'student' // ✅ Everyone starts as student/general
-  });
-
-  res.send(result);
-});
-
-
-
-
-
-
-// Check if user is admin
-app.get('/users/admin/:email', async (req, res) => {
-  const email = req.params.email;
-  const user = await userCollection.findOne({ email: email });
-  const isAdmin = user?.role === 'admin';
-  res.send({ admin: isAdmin });
-});
-
-const verifyAdmin = async (req, res, next) => {
-  const email = req.user?.email;
-
-  const user = await userCollection.findOne({ email: email });
-
-  if (user?.role !== 'admin') {
-    return res.status(403).send({ error: 'Forbidden: Admins only' });
-  }
-
-  next();
-};
-
-
-
-
-
-
-//kaium
-// ✅ GET: Check if user is a teacher
-app.get('/users/teacher/:email', async (req, res) => {
-  const email = req.params.email;
-  const user = await userCollection.findOne({ email });
-  const isTeacher = user?.role === 'teacher';
-  res.send({ teacher: isTeacher });
-});
-
-
-// ✅ PATCH: Update user role (e.g. from student to admin/teacher)
-app.patch('/users/role/:id', verifyToken, verifyAdmin, async (req, res) => {
-  const id = req.params.id;
-  const { role } = req.body;
-
-  if (!['admin', 'teacher', 'student'].includes(role)) {
-    return res.status(400).send({ error: 'Invalid role' });
-  }
-
-  const targetUser = await userCollection.findOne({ _id: new ObjectId(id) });
-
-  // ✅ Prevent modifying superadmin
-  if (targetUser?.superadmin) {
-    return res.status(403).send({ error: 'Forbidden: Cannot change role of a superadmin' });
-  }
-
-  const result = await userCollection.updateOne(
-    { _id: new ObjectId(id) },
-    { $set: { role: role } }
-  );
-
-  res.send(result);
-});
-
-// ✅ DELETE: Remove a user (admin only)
-app.delete('/users/:id', verifyToken, verifyAdmin, async (req, res) => {
-  const id = req.params.id;
-
-  try {
-    const targetUser = await userCollection.findOne({ _id: new ObjectId(id) });
-
-    // ✅ Prevent deleting superadmin
-    if (targetUser?.superadmin) {
-      return res.status(403).send({ error: 'Forbidden: Cannot delete a superadmin' });
-    }
-
-    const result = await userCollection.deleteOne({ _id: new ObjectId(id) });
-    res.send(result);
-  } catch (error) {
-    console.error("Failed to delete user:", error);
-    res.status(500).send({ error: "Failed to delete user" });
-  }
-});
-
-
-
-
-
-
-
-
-
-//kaium
-
-//for updateProfilePicture.jsx from FE
-app.patch('/users/:email', async (req, res) => {
-  const email = req.params.email;
-  const { photo } = req.body;
-
-  const result = await userCollection.updateOne(
-    { email },
-    { $set: { photo } }
-  );
-
-  res.send(result);
-});
-
-
-// Inside your run() function in backend
-const videoCollection = client.db('Edutech').collection('videos');
-
-// ✅ Route: Add new course with videos (Admin only)
-app.post('/videos', verifyToken, verifyAdmin, async (req, res) => {
-  const course = req.body;
-  try {
-    const result = await videoCollection.insertOne(course);
-    res.send(result);
-  } catch (err) {
-    res.status(500).send({ error: 'Failed to insert course' });
-  }
-});
-
-// ✅ PATCH: Approve a course
-app.patch('/videos/approve/:id', verifyToken, verifyAdmin, async (req, res) => {
-  const id = req.params.id;
-  try {
-    const result = await videoCollection.updateOne(
-      { _id: new ObjectId(id) },
-      { $set: { status: 'approved' } }
-    );
-    res.send(result);
-  } catch (error) {
-    res.status(500).send({ error: 'Failed to approve course' });
-  }
-});
-
-app.get('/videos', async (req, res) => {
-  try {
-    const videos = await videoCollection.find().toArray();
-    res.send(videos);
-  } catch (error) {
-    res.status(500).send({ message: 'Error fetching videos' });
-  }
-});
-
-
-//kaium
-// ✅ DELETE: Remove a course from DB
-app.delete('/videos/:id', verifyToken, verifyAdmin, async (req, res) => {
-  const id = req.params.id;
-  try {
-    const result = await videoCollection.deleteOne({ _id: new ObjectId(id) });
-    res.send(result);
-  } catch (error) {
-    res.status(500).send({ error: 'Failed to delete course' });
-  }
-});
-
-// ✅ Get single course by ID (with validation)
-app.get('/videos/:id', async (req, res) => {
-  const { id } = req.params;
-
-  // Check if ID is a valid ObjectId
-  if (!ObjectId.isValid(id)) {
-    return res.status(400).json({ error: "Invalid course ID" });
-  }
-
-  try {
-    const course = await videoCollection.findOne({ _id: new ObjectId(id) });
-
-    if (!course) {
-      return res.status(404).json({ error: "Course not found" });
-    }
-
-    res.json(course);
-  } catch (error) {
-    console.error("Error fetching course by ID:", error);
-    res.status(500).json({ error: "Server error while fetching course" });
-  }
-});
-
-app.patch('/videos/:id', verifyToken, verifyAdmin, async (req, res) => {
-  const { id } = req.params;
-  const updatedData = req.body;
-
-  try {
-    // 1. Update course data
-    const result = await videoCollection.updateOne(
-      { _id: new ObjectId(id) },
-      { $set: updatedData }
-    );
-
-    // 2. Find enrolled users for this course (approved enrollments)
-    const enrolledUsers = await enrollCollection
-      .find({ courseId: id, status: 'approved' })
-      .toArray();
-
-    // 3. Create notifications for each enrolled user
-    const notifications = enrolledUsers.map(user => ({
-      recipientEmail: user.userEmail,
-      type: 'course_update',
-      title: 'Course Updated',
-      message: `The course "${updatedData.title || 'a course'}" has been updated.`,
-      read: false,
-      timestamp: new Date(),
-    }));
-
-    if (notifications.length > 0) {
-      await notificationCollection.insertMany(notifications);
-    }
-
-    // 4. Respond success
-    res.send(result);
-  } catch (err) {
-    console.error("Error updating course:", err);
-    res.status(500).send({ error: "Failed to update course" });
-  }
-});
-
-// ✅ PATCH: Toggle featured status (max 6 featured allowed)
-app.patch('/videos/feature/:id', verifyToken, verifyAdmin, async (req, res) => {
-  const { id } = req.params;
-  const { featured } = req.body;
-
-  try {
-    const targetCourse = await videoCollection.findOne({ _id: new ObjectId(id) });
-
-    if (!targetCourse) {
-      return res.status(404).send({ error: "Course not found" });
-    }
-
-    // ✅ If setting to true → limit max 6 featured courses
-    if (featured) {
-      const featuredCount = await videoCollection.countDocuments({ featured: true });
-      if (featuredCount >= 6) {
-        return res.status(400).send({ error: "You can only feature up to 6 courses" });
->>>>>>> f0e2b0f1eae9869a2fc2b7fecdc4fce889d4a53a
       }
 
       const result = await userCollection.insertOne({
@@ -718,175 +442,170 @@ app.patch('/videos/feature/:id', verifyToken, verifyAdmin, async (req, res) => {
       }
     });
 
-// ✅ PATCH: Mark a notification as read
-app.patch('/notifications/:id', verifyToken, async (req, res) => {
-  const { id } = req.params;
-  try {
-    const result = await notificationCollection.updateOne(
-      { _id: new ObjectId(id) },
-      { $set: { read: true } }
-    );
-    res.send(result);
-  } catch (err) {
-    console.error("Failed to mark notification as read:", err);
-    res.status(500).send({ error: "Failed to update notification" });
-  }
-});
-
-
-// enrollments
-// Load from .env
-const store_id = process.env.STORE_ID;
-const store_passwd = process.env.STORE_PASSWORD;
-const is_live = false; // true for production
-
-// Required packages
-const SSLCommerzPayment = require("sslcommerz-lts");
-const { v4: uuidv4 } = require("uuid");
-
-// ✅ POST: Initiate SSLCommerz payment session
-app.post("/initiate-payment", verifyToken, async (req, res) => {
-  const { courseId, courseTitle, price, userEmail, phone } = req.body;
-
-  if (!courseId || !userEmail || !price) {
-    return res.status(400).json({ error: "Missing required fields" });
-  }
-
-  const transactionId = uuidv4();
-
-  const data = {
-    total_amount: price,
-    currency: "BDT",
-    tran_id: transactionId,
-    success_url: process.env.SSL_SUCCESS_URL,
-    fail_url: process.env.SSL_FAIL_URL,
-    cancel_url: process.env.SSL_CANCEL_URL,
-    ipn_url: process.env.SSL_IPN_URL,
-    product_name: courseTitle,
-    cus_name: userEmail,
-    cus_email: userEmail,
-    cus_add1: "N/A",
-    cus_phone: phone || "N/A",
-    shipping_method: "NO",
-    product_category: "Course",
-    product_profile: "general",
-  };
-
-  try {
-    const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live);
-    const apiResponse = await sslcz.init(data);
-
-    // Save a pending enrollment request
-    const enrollDoc = {
-      courseId,
-      courseTitle,
-      userEmail,
-      phone,
-      status: "pending",
-      method: "sslcommerz",
-      transactionId,
-      timestamp: new Date(),
-    };
-
-    await enrollCollection.insertOne(enrollDoc);
-
-    if (apiResponse?.GatewayPageURL) {
-      res.send({ url: apiResponse.GatewayPageURL });
-    } else {
-      res.status(400).json({ error: "Payment session failed" });
-    }
-  } catch (error) {
-    console.error("Payment initiation error:", error);
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-// ✅ GET: Payment Success Handler
-// ✅ POST: Payment Success Callback (for SSLCommerz)
-app.post("/payment-success", async (req, res) => {
-  const { tran_id, val_id, amount, status } = req.body;
-
-  try {
-    await enrollCollection.updateOne(
-      { transactionId: tran_id },
-      {
-        $set: {
-          status: "approved",
-          paymentStatus: "success",
-          val_id,
-        },
+    // ✅ PATCH: Mark a notification as read
+    app.patch("/notifications/:id", verifyToken, async (req, res) => {
+      const { id } = req.params;
+      try {
+        const result = await notificationCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { read: true } }
+        );
+        res.send(result);
+      } catch (err) {
+        console.error("Failed to mark notification as read:", err);
+        res.status(500).send({ error: "Failed to update notification" });
       }
-    );
-
-    // Optionally: send user notification (if not yet added)
-    await sendNotification({
-      userEmail: req.body.cus_email,
-      title: "Enrollment Successful",
-      message: `Your payment for ${req.body.product_name} was successful.`,
     });
 
-    // Redirect to frontend success page
-    res.redirect(`https://bornobyte-bd.web.app/payment-success?tran_id=${tran_id}`);
-  } catch (err) {
-    console.error("Success update error:", err);
-    res.redirect("https://bornobyte-bd.web.app/payment-failed");
-  }
-});
+    // enrollments
+    // Load from .env
+    const store_id = process.env.STORE_ID;
+    const store_passwd = process.env.STORE_PASSWORD;
+    const is_live = false; // true for production
 
+    // Required packages
+    const SSLCommerzPayment = require("sslcommerz-lts");
+    const { v4: uuidv4 } = require("uuid");
 
-// ✅ GET: Payment Failure Handler
-app.get("/payment-fail", async (req, res) => {
-  const { tran_id } = req.query;
+    // ✅ POST: Initiate SSLCommerz payment session
+    app.post("/initiate-payment", verifyToken, async (req, res) => {
+      const { courseId, courseTitle, price, userEmail, phone } = req.body;
 
-  try {
-    await enrollCollection.updateOne(
-      { transactionId: tran_id },
-      { $set: { status: "failed", paymentStatus: "failed" } }
-    );
-  } catch (err) {
-    console.error("Fail update error:", err);
-  }
+      if (!courseId || !userEmail || !price) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
 
-  res.redirect("https://bornobyte-bd.web.app/payment-failed");
-});
+      const transactionId = uuidv4();
 
-// ✅ GET: Payment Cancel Handler
-app.get("/payment-cancel", async (req, res) => {
-  const { tran_id } = req.query;
+      const data = {
+        total_amount: price,
+        currency: "BDT",
+        tran_id: transactionId,
+        success_url: process.env.SSL_SUCCESS_URL,
+        fail_url: process.env.SSL_FAIL_URL,
+        cancel_url: process.env.SSL_CANCEL_URL,
+        ipn_url: process.env.SSL_IPN_URL,
+        product_name: courseTitle,
+        cus_name: userEmail,
+        cus_email: userEmail,
+        cus_add1: "N/A",
+        cus_phone: phone || "N/A",
+        shipping_method: "NO",
+        product_category: "Course",
+        product_profile: "general",
+      };
 
-  try {
-    await enrollCollection.updateOne(
-      { transactionId: tran_id },
-      { $set: { status: "cancelled", paymentStatus: "cancelled" } }
-    );
-  } catch (err) {
-    console.error("Cancel update error:", err);
-  }
+      try {
+        const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live);
+        const apiResponse = await sslcz.init(data);
 
-  res.redirect("https://bornobyte-bd.web.app/payment-cancel");
-});
+        // Save a pending enrollment request
+        const enrollDoc = {
+          courseId,
+          courseTitle,
+          userEmail,
+          phone,
+          status: "pending",
+          method: "sslcommerz",
+          transactionId,
+          timestamp: new Date(),
+        };
 
-// ✅ Optional: POST IPN handler for server-to-server confirmation
-app.post("/ipn-handler", async (req, res) => {
-  const { tran_id, status } = req.body;
+        await enrollCollection.insertOne(enrollDoc);
 
-  try {
-    await enrollCollection.updateOne(
-      { transactionId: tran_id },
-      { $set: { paymentStatus: status || "ipn-notified" } }
-    );
+        if (apiResponse?.GatewayPageURL) {
+          res.send({ url: apiResponse.GatewayPageURL });
+        } else {
+          res.status(400).json({ error: "Payment session failed" });
+        }
+      } catch (error) {
+        console.error("Payment initiation error:", error);
+        res.status(500).json({ error: "Server error" });
+      }
+    });
 
-    res.status(200).send("IPN received");
-  } catch (err) {
-    console.error("IPN handler error:", err);
-    res.status(500).send("Error handling IPN");
-  }
-});
+    // ✅ GET: Payment Success Handler
+    // ✅ POST: Payment Success Callback (for SSLCommerz)
+    app.post("/payment-success", async (req, res) => {
+      const { tran_id, val_id, amount, status } = req.body;
 
+      try {
+        await enrollCollection.updateOne(
+          { transactionId: tran_id },
+          {
+            $set: {
+              status: "approved",
+              paymentStatus: "success",
+              val_id,
+            },
+          }
+        );
 
+        // Optionally: send user notification (if not yet added)
+        await sendNotification({
+          userEmail: req.body.cus_email,
+          title: "Enrollment Successful",
+          message: `Your payment for ${req.body.product_name} was successful.`,
+        });
 
+        // Redirect to frontend success page
+        res.redirect(
+          `https://bornobyte-bd.web.app/payment-success?tran_id=${tran_id}`
+        );
+      } catch (err) {
+        console.error("Success update error:", err);
+        res.redirect("https://bornobyte-bd.web.app/payment-failed");
+      }
+    });
 
+    // ✅ GET: Payment Failure Handler
+    app.get("/payment-fail", async (req, res) => {
+      const { tran_id } = req.query;
 
+      try {
+        await enrollCollection.updateOne(
+          { transactionId: tran_id },
+          { $set: { status: "failed", paymentStatus: "failed" } }
+        );
+      } catch (err) {
+        console.error("Fail update error:", err);
+      }
+
+      res.redirect("https://bornobyte-bd.web.app/payment-failed");
+    });
+
+    // ✅ GET: Payment Cancel Handler
+    app.get("/payment-cancel", async (req, res) => {
+      const { tran_id } = req.query;
+
+      try {
+        await enrollCollection.updateOne(
+          { transactionId: tran_id },
+          { $set: { status: "cancelled", paymentStatus: "cancelled" } }
+        );
+      } catch (err) {
+        console.error("Cancel update error:", err);
+      }
+
+      res.redirect("https://bornobyte-bd.web.app/payment-cancel");
+    });
+
+    // ✅ Optional: POST IPN handler for server-to-server confirmation
+    app.post("/ipn-handler", async (req, res) => {
+      const { tran_id, status } = req.body;
+
+      try {
+        await enrollCollection.updateOne(
+          { transactionId: tran_id },
+          { $set: { paymentStatus: status || "ipn-notified" } }
+        );
+
+        res.status(200).send("IPN received");
+      } catch (err) {
+        console.error("IPN handler error:", err);
+        res.status(500).send("Error handling IPN");
+      }
+    });
 
     //kaium
 
@@ -896,32 +615,38 @@ app.post("/ipn-handler", async (req, res) => {
     app.post("/enrollRequests", verifyToken, async (req, res) => {
       const enrollment = req.body;
 
-  try {
-    // Check if user already requested this course
-    const existing = await enrollCollection.findOne({
-      userEmail: enrollment.userEmail,
-      courseId: enrollment.courseId,
-    });
+      try {
+        // Check if user already requested this course
+        const existing = await enrollCollection.findOne({
+          userEmail: enrollment.userEmail,
+          courseId: enrollment.courseId,
+        });
 
-    if (existing?.status === 'approved') {
-      return res.status(400).send({ error: 'You are already enrolled in this course' });
-    }
+        if (existing?.status === "approved") {
+          return res
+            .status(400)
+            .send({ error: "You are already enrolled in this course" });
+        }
 
-    if (existing?.status === 'pending') {
-      return res.status(400).send({ error: 'You already submitted an enrollment request for this course' });
-    }
+        if (existing?.status === "pending") {
+          return res
+            .status(400)
+            .send({
+              error:
+                "You already submitted an enrollment request for this course",
+            });
+        }
 
         enrollment.status = "pending"; // Initial status
         enrollment.timestamp = new Date();
 
-    const result = await enrollCollection.insertOne(enrollment);
-    res.send(result);
-  } catch (err) {
-    console.error('Enroll error:', err);
-    res.status(500).send({ error: 'Failed to submit enrollment request' });
-  }
-});
-
+        const result = await enrollCollection.insertOne(enrollment);
+        res.send(result);
+      } catch (err) {
+        console.error("Enroll error:", err);
+        res.status(500).send({ error: "Failed to submit enrollment request" });
+      }
+    });
 
     // GET: Fetch all enroll requests
     app.get("/enrollRequests", verifyToken, async (req, res) => {
@@ -1017,59 +742,67 @@ app.post("/ipn-handler", async (req, res) => {
         status: "approved",
       });
 
-  if (result) {
-    res.send({ approved: true });
-  } else {
-    res.send({ approved: false });
-  }
-});
+      if (result) {
+        res.send({ approved: true });
+      } else {
+        res.send({ approved: false });
+      }
+    });
 
-//homepage COurses
-const courseCollection = client.db('Edutech').collection('courseCollection');
-// POST: Add course
-app.post('/specializations', verifyToken, verifyAdmin, async (req, res) => {
-  const course = req.body;
-  course.createdAt = new Date();
-  const result = await courseCollection.insertOne(course);
-  res.send(result);
-});
+    //homepage COurses
+    const courseCollection = client
+      .db("Edutech")
+      .collection("courseCollection");
+    // POST: Add course
+    app.post("/specializations", verifyToken, verifyAdmin, async (req, res) => {
+      const course = req.body;
+      course.createdAt = new Date();
+      const result = await courseCollection.insertOne(course);
+      res.send(result);
+    });
 
-// GET: All Courses
-app.get('/specializations', async (req, res) => {
-  const result = await courseCollection.find().toArray();
-  res.send(result);
-});
+    // GET: All Courses
+    app.get("/specializations", async (req, res) => {
+      const result = await courseCollection.find().toArray();
+      res.send(result);
+    });
 
-// PATCH: Update course
-app.patch('/specializations/:id', verifyToken, verifyAdmin, async (req, res) => {
-  const { id } = req.params;
-  const updatedData = req.body;
-  const result = await courseCollection.updateOne(
-    { _id: new ObjectId(id) },
-    { $set: updatedData }
-  );
-  res.send(result);
-});
+    // PATCH: Update course
+    app.patch(
+      "/specializations/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const { id } = req.params;
+        const updatedData = req.body;
+        const result = await courseCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: updatedData }
+        );
+        res.send(result);
+      }
+    );
 
-// DELETE: Delete course
-app.delete('/specializations/:id', verifyToken, verifyAdmin, async (req, res) => {
-  const { id } = req.params;
-  const result = await courseCollection.deleteOne({ _id: new ObjectId(id) });
-  res.send(result);
-});
+    // DELETE: Delete course
+    app.delete(
+      "/specializations/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const { id } = req.params;
+        const result = await courseCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+        res.send(result);
+      }
+    );
 
+    // index.js or server.js
+    // app.use(express.static('dist'));
 
-
-
-// index.js or server.js
-// app.use(express.static('dist'));
-
-// app.get('*', (req, res) => {
-//   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-// });
-
-
-
+    // app.get('*', (req, res) => {
+    //   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+    // });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
