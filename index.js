@@ -790,6 +790,79 @@ app.post("/ipn-handler", async (req, res) => {
   }
 });
 
+const blogCollection = client.db('Edutech').collection('blogs');
+
+// ✅ Create Blog Post
+app.post('/blogs', verifyToken, verifyAdmin, async (req, res) => {
+  const blog = req.body;
+  blog.timestamp = new Date();
+
+  try {
+    const result = await blogCollection.insertOne(blog);
+    res.send(result);
+  } catch (err) {
+    console.error('Failed to create blog:', err);
+    res.status(500).send({ error: 'Failed to create blog' });
+  }
+});
+
+
+// ✅ Get All Blogs
+app.get('/blogs', async (req, res) => {
+  try {
+    const blogs = await blogCollection.find().sort({ timestamp: -1 }).toArray();
+    res.send(blogs);
+  } catch (err) {
+    console.error('Failed to fetch blogs:', err);
+    res.status(500).send({ error: 'Failed to fetch blogs' });
+  }
+});
+
+// ✅ Get Single Blog
+app.get('/blogs/:id', async (req, res) => {
+  const { id } = req.params;
+  if (!ObjectId.isValid(id)) return res.status(400).json({ error: "Invalid blog ID" });
+
+  try {
+    const blog = await blogCollection.findOne({ _id: new ObjectId(id) });
+    if (!blog) return res.status(404).json({ error: "Blog not found" });
+    res.json(blog);
+  } catch (error) {
+    console.error("Error fetching blog by ID:", error);
+    res.status(500).json({ error: "Server error while fetching blog" });
+  }
+});
+
+// ✅ Update Blog
+app.patch('/blogs/:id', verifyToken, verifyAdmin, async (req, res) => {
+  const { id } = req.params;
+  const updatedData = req.body;
+
+  try {
+    const result = await blogCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updatedData }
+    );
+    res.send(result);
+  } catch (err) {
+    console.error("Error updating blog:", err);
+    res.status(500).send({ error: "Failed to update blog" });
+  }
+});
+
+// ✅ Delete Blog
+app.delete('/blogs/:id', verifyToken, verifyAdmin, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await blogCollection.deleteOne({ _id: new ObjectId(id) });
+    res.send(result);
+  } catch (error) {
+    console.error("Failed to delete blog:", error);
+    res.status(500).send({ error: "Failed to delete blog" });
+  }
+});
+
 
 
 
