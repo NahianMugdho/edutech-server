@@ -62,6 +62,30 @@ const getUserById = async (id, db) => {
 };
 
 
+// Middleware to verify if the user is an admin
+const verifyAdmin = async (req, res, next) => {
+  try {
+    const userId = req.user?._id;
+
+    if (!userId || !ObjectId.isValid(userId)) {
+      return res.status(401).send({ error: 'Unauthorized: Invalid user ID' });
+    }
+
+    const db = client.db('Edutech');
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+
+    if (!user || user.role !== 'admin') {
+      return res.status(403).send({ error: 'Forbidden: Admins only' });
+    }
+
+    next();
+  } catch (err) {
+    console.error('verifyAdmin failed:', err);
+    res.status(500).send({ error: 'Internal Server Error (admin check)' });
+  }
+};
+
+
 
 async function run() {
   try {
@@ -862,6 +886,115 @@ app.delete('/blogs/:id', verifyToken, verifyAdmin, async (req, res) => {
     res.status(500).send({ error: "Failed to delete blog" });
   }
 });
+
+
+// Review and Rating System (where user can give only one review per course and can update and delete it. Also admin can delete any review)
+const reviewCollection = client.db('Edutech').collection('reviews');
+
+// ✅ POST: Add a review
+app.post('/reviews', verifyToken, async (req, res) => {
+  const { courseId, rating, comment } = req.body;
+  const userEmail = req.user.email; // from JWT
+
+  try {
+    // Check if already reviewed
+    const existingReview = await reviewCollection.findOne({ userEmail, courseId });
+    if (existingReview) {
+      return res.status(400).send({ error: 'You have already reviewed this course' });
+    }
+
+    const review = {
+      courseId,
+      rating: Number(rating),
+      comment,
+      userEmail,
+      timestamp: new Date()
+    };
+
+    const result = await reviewCollection.insertOne(review);
+    res.send(result);
+  } catch (err) {
+    console.error('Failed to add review:', err);
+    res.status(500).send({ error: 'Failed to add review' });
+  }
+});
+
+// ✅ GET: Fetch reviews for a course
+app.get('/reviews/:courseId', async (req, res) => {
+  const { courseId } = req.params;
+
+  try {
+    const reviews = await reviewCollection
+      .find({ courseId })
+      .sort({ timestamp: -1 })
+      .toArray();
+    res.send(reviews);
+  } catch (err) {
+    console.error('Failed to fetch reviews:', err);
+    res.status(500).send({ error: 'Failed to fetch reviews' });
+  }
+});
+
+// ✅ GET: Average rating for a course
+app.get('/reviews/:courseId/average', async (req, res) => {
+  const { courseId } = req.params;
+
+  try {
+    const result = await reviewCollection.aggregate([
+      { $match: { courseId } },
+      { $group: { _id: null, avgRating: { $avg: "$rating" }, count: { $sum: 1 } } }
+    ]).toArray();
+
+    if (result.length === 0) {
+      return res.send({ avgRating: 0, count: 0 });
+    }
+
+    res.send({ avgRating: result[0].avgRating, count: result[0].count });
+  } catch (err) {
+    console.error('Failed to fetch average rating:', err);
+    res.status(500).send({ error: 'Failed to fetch average rating' });
+  }
+});
+
+// ✅ PATCH: Update a review (user can only update their own)
+app.patch('/reviews/:id', verifyToken, async (req, res) => {
+  const { id } = req.params;
+  const { rating, comment } = req.body;
+  const userEmail = req.user.email;
+
+  try {
+    const result = await reviewCollection.updateOne(
+      { _id: new ObjectId(id), userEmail },
+      { $set: { rating: Number(rating), comment, timestamp: new Date() } }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(404).send({ error: 'Review not found or not updated' });
+    }
+
+    res.send(result);
+  } catch (err) {
+    console.error('Failed to update review:', err);
+    res.status(500).send({ error: 'Failed to update review' });
+  }
+});
+
+// ✅ DELETE: Admin can delete any review
+app.delete('/reviews/:id', verifyToken, verifyAdmin, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await reviewCollection.deleteOne({ _id: new ObjectId(id) });
+    if (result.deletedCount === 0) {
+      return res.status(404).send({ error: 'Review not found' });
+    }
+    res.send(result);
+  } catch (err) {
+    console.error('Failed to delete review:', err);
+    res.status(500).send({ error: 'Failed to delete review' });
+  }
+});
+
 
 
 
