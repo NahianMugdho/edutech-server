@@ -895,6 +895,7 @@ const reviewCollection = client.db('Edutech').collection('reviews');
 app.post('/reviews', verifyToken, async (req, res) => {
   const { courseId, rating, comment } = req.body;
   const userEmail = req.user.email; // from JWT
+  const userName = req.user.name; // Fallback if name not provided
 
   try {
     // Check if already reviewed
@@ -907,6 +908,7 @@ app.post('/reviews', verifyToken, async (req, res) => {
       courseId,
       rating: Number(rating),
       comment,
+      userName,
       userEmail,
       timestamp: new Date()
     };
@@ -961,10 +963,11 @@ app.patch('/reviews/:id', verifyToken, async (req, res) => {
   const { id } = req.params;
   const { rating, comment } = req.body;
   const userEmail = req.user.email;
+  const userName = req.user.name; // Fallback if name not provided
 
   try {
     const result = await reviewCollection.updateOne(
-      { _id: new ObjectId(id), userEmail },
+      { _id: new ObjectId(id), userEmail, userName }, // Ensure only the owner can update
       { $set: { rating: Number(rating), comment, timestamp: new Date() } }
     );
 
@@ -992,6 +995,75 @@ app.delete('/reviews/:id', verifyToken, verifyAdmin, async (req, res) => {
   } catch (err) {
     console.error('Failed to delete review:', err);
     res.status(500).send({ error: 'Failed to delete review' });
+  }
+});
+
+//❤️ Favorite courses collection
+const favoriteCollection = client.db('Edutech').collection('favorites');
+
+// ✅ POST: Add a course to favorites
+app.post('/favorites', verifyToken, async (req, res) => {
+  let { courseId } = req.body;
+  const userEmail = req.user.email.toLowerCase();
+
+  if (!courseId || typeof courseId !== 'string' || courseId.trim() === '') {
+    return res.status(400).send({ error: 'Invalid or missing courseId' });
+  }
+  courseId = courseId.trim();
+
+  try {
+    // Check if already favorited
+    const existingFavorite = await favoriteCollection.findOne({ userEmail, courseId });
+    if (existingFavorite) {
+      return res.status(400).send({ error: 'This course is already in your favorites' });
+    }
+
+    const favorite = {
+      userEmail,
+      courseId,
+      timestamp: new Date(),
+    };
+
+    await favoriteCollection.insertOne(favorite);
+    res.send({ message: 'Added to favorites' });
+  } catch (err) {
+    console.error('Failed to add favorite:', err);
+    res.status(500).send({ error: 'Failed to add favorite' });
+  }
+});
+
+// ✅ GET: Fetch favorite courses for a user
+app.get('/favorites', verifyToken, async (req, res) => {
+  const userEmail = req.user.email.toLowerCase();
+
+  try {
+    const favorites = await favoriteCollection.find({ userEmail }).toArray();
+    res.send(favorites);
+  } catch (err) {
+    console.error('Failed to fetch favorites:', err);
+    res.status(500).send({ error: 'Failed to fetch favorites' });
+  }
+});
+
+// ✅ DELETE: Remove a course from favorites
+app.delete('/favorites/:courseId', verifyToken, async (req, res) => {
+  let { courseId } = req.params;
+  const userEmail = req.user.email.toLowerCase();
+
+  if (!courseId || typeof courseId !== 'string' || courseId.trim() === '') {
+    return res.status(400).send({ error: 'Invalid or missing courseId' });
+  }
+  courseId = courseId.trim();
+
+  try {
+    const result = await favoriteCollection.deleteOne({ userEmail, courseId });
+    if (result.deletedCount === 0) {
+      return res.status(404).send({ error: 'Favorite not found' });
+    }
+    res.send({ message: 'Removed from favorites' });
+  } catch (err) {
+    console.error('Failed to remove favorite:', err);
+    res.status(500).send({ error: 'Failed to remove favorite' });
   }
 });
 
