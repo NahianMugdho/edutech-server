@@ -401,28 +401,26 @@ async function run() {
         res.status(500).send({ error: "Failed to insert course" });
       }
     });
-// ✅ Route: Add new course with videos (Admin only)
-app.post('/videos', verifyToken, verifyAdmin, async (req, res) => {
-  const course = req.body;
-  try {
-    const result = await videoCollection.insertOne(course);
-    res.send(result);
-  } catch (err) {
-    res.status(500).send({ error: 'Failed to insert course' });
-  }
-});
 
-// GET: count of pending courses (not approved)
-app.get('/videos/pending-count', verifyToken, verifyAdmin, async (req, res) => {
-  try {
-    const count = await videoCollection.countDocuments({ status: { $ne: 'approved' } });
-    res.send({ count });
-  } catch (err) {
-    console.error("Failed to fetch pending courses count", err);
-    res.status(500).send({ error: "Failed to fetch pending courses count" });
-  }
-});
-
+    // GET: count of pending courses (not approved)
+    app.get(
+      "/videos/pending-count",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        try {
+          const count = await videoCollection.countDocuments({
+            status: { $ne: "approved" },
+          });
+          res.send({ count });
+        } catch (err) {
+          console.error("Failed to fetch pending courses count", err);
+          res
+            .status(500)
+            .send({ error: "Failed to fetch pending courses count" });
+        }
+      }
+    );
 
     // ✅ PATCH: Approve a course
     app.patch(
@@ -564,48 +562,54 @@ app.get('/videos/pending-count', verifyToken, verifyAdmin, async (req, res) => {
             { $set: { featured } }
           );
 
-    res.send(result);
-  } catch (err) {
-    console.error("Feature toggle error:", err);
-    res.status(500).send({ error: "Server error" });
-  }
-});
+          res.send(result);
+        } catch (err) {
+          console.error("Feature toggle error:", err);
+          res.status(500).send({ error: "Server error" });
+        }
+      }
+    );
 
     const commentCollection = client.db("Edutech").collection("comments");
     const progressCollection = client.db("Edutech").collection("progress");
 
-// ✅ Add Comment
-app.post('/comments', verifyToken, async (req, res) => {
-  const comment = req.body;
-  comment.timestamp = new Date();
-  const result = await commentCollection.insertOne(comment);
-  res.send(result);
-});
+    // ✅ Add Comment
+    app.post("/comments", verifyToken, async (req, res) => {
+      const comment = req.body;
+      comment.timestamp = new Date();
+      const result = await commentCollection.insertOne(comment);
+      res.send(result);
+    });
 
-// ✅ Get Comments by Course
-app.get('/comments/:courseId', async (req, res) => {
-  const courseId = req.params.courseId;
-  const comments = await commentCollection.find({ courseId }).sort({ timestamp: -1 }).toArray();
-  res.send(comments);
-});
+    // ✅ Get Comments by Course
+    app.get("/comments/:courseId", async (req, res) => {
+      const courseId = req.params.courseId;
+      const comments = await commentCollection
+        .find({ courseId })
+        .sort({ timestamp: -1 })
+        .toArray();
+      res.send(comments);
+    });
 
-// ✅ Update Comment
-app.patch('/comments/:id', verifyToken, async (req, res) => {
-  const { id } = req.params;
-  const { text } = req.body;
-  const result = await commentCollection.updateOne(
-    { _id: new ObjectId(id) },
-    { $set: { text, edited: true } }
-  );
-  res.send(result);
-});
+    // ✅ Update Comment
+    app.patch("/comments/:id", verifyToken, async (req, res) => {
+      const { id } = req.params;
+      const { text } = req.body;
+      const result = await commentCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { text, edited: true } }
+      );
+      res.send(result);
+    });
 
-// ✅ Delete Comment
-app.delete('/comments/:id', verifyToken, async (req, res) => {
-  const { id } = req.params;
-  const result = await commentCollection.deleteOne({ _id: new ObjectId(id) });
-  res.send(result);
-});
+    // ✅ Delete Comment
+    app.delete("/comments/:id", verifyToken, async (req, res) => {
+      const { id } = req.params;
+      const result = await commentCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+      res.send(result);
+    });
 
     // ✅ Update Video Progress
     app.post("/progress", verifyToken, async (req, res) => {
@@ -1143,10 +1147,12 @@ app.delete('/comments/:id', verifyToken, async (req, res) => {
         }
 
         if (existing?.status === "pending") {
-          return res.status(400).send({
-            error:
-              "You already submitted an enrollment request for this course",
-          });
+          return res
+            .status(400)
+            .send({
+              error:
+                "You already submitted an enrollment request for this course",
+            });
         }
 
         enrollment.status = "pending"; // Initial status
@@ -1170,6 +1176,27 @@ app.delete('/comments/:id', verifyToken, async (req, res) => {
         res.status(500).send({ error: "Failed to get enrollment requests" });
       }
     });
+
+    // ✅ GET: Get total pending enrollment requests count
+    app.get(
+      "/enrollRequests/pending-count",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        try {
+          const count = await enrollCollection.countDocuments({
+            status: "pending",
+          });
+          res.send({ count });
+        } catch (err) {
+          console.error("Error fetching pending requests count:", err);
+          res
+            .status(500)
+            .send({ error: "Failed to fetch pending requests count" });
+        }
+      }
+    );
+
     // ✅ PATCH: Approve enrollment request and send notification
     app.patch(
       "/enrollRequests/:id",
@@ -1178,33 +1205,6 @@ app.delete('/comments/:id', verifyToken, async (req, res) => {
       async (req, res) => {
         const { id } = req.params;
         const { status } = req.body;
-// GET: Fetch all enroll requests
-app.get('/enrollRequests', verifyToken, async (req, res) => {
-  try {
-    const requests = await enrollCollection.find().toArray();
-    res.send(requests);
-  } catch (err) {
-    console.error('Failed to get enrollment requests', err);
-    res.status(500).send({ error: 'Failed to get enrollment requests' });
-  }
-});
-
-// ✅ GET: Get total pending enrollment requests count
-app.get('/enrollRequests/pending-count', verifyToken, verifyAdmin, async (req, res) => {
-  try {
-    const count = await enrollCollection.countDocuments({ status: 'pending' });
-    res.send({ count });
-  } catch (err) {
-    console.error('Error fetching pending requests count:', err);
-    res.status(500).send({ error: 'Failed to fetch pending requests count' });
-  }
-});
-
-
-// ✅ PATCH: Approve enrollment request and send notification
-app.patch('/enrollRequests/:id', verifyToken, verifyAdmin, async (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body;
 
         try {
           // 1. Update enrollment status
