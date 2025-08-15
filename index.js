@@ -422,6 +422,18 @@ app.post('/videos', verifyToken, verifyAdmin, async (req, res) => {
   }
 });
 
+// GET: count of pending courses (not approved)
+app.get('/videos/pending-count', verifyToken, verifyAdmin, async (req, res) => {
+  try {
+    const count = await videoCollection.countDocuments({ status: { $ne: 'approved' } });
+    res.send({ count });
+  } catch (err) {
+    console.error("Failed to fetch pending courses count", err);
+    res.status(500).send({ error: "Failed to fetch pending courses count" });
+  }
+});
+
+
 // ✅ PATCH: Approve a course
 app.patch('/videos/approve/:id', verifyToken, verifyAdmin, async (req, res) => {
   const id = req.params.id;
@@ -1118,6 +1130,19 @@ app.get('/enrollRequests', verifyToken, async (req, res) => {
     res.status(500).send({ error: 'Failed to get enrollment requests' });
   }
 });
+
+// ✅ GET: Get total pending enrollment requests count
+app.get('/enrollRequests/pending-count', verifyToken, verifyAdmin, async (req, res) => {
+  try {
+    const count = await enrollCollection.countDocuments({ status: 'pending' });
+    res.send({ count });
+  } catch (err) {
+    console.error('Error fetching pending requests count:', err);
+    res.status(500).send({ error: 'Failed to fetch pending requests count' });
+  }
+});
+
+
 // ✅ PATCH: Approve enrollment request and send notification
 app.patch('/enrollRequests/:id', verifyToken, verifyAdmin, async (req, res) => {
   const { id } = req.params;
